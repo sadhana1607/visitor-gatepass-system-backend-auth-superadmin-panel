@@ -37,7 +37,7 @@ public class AuthController {
 
         // 🔴 Token missing
         if (header == null || !header.startsWith("Bearer ")) {
-            throw new UnauthorizedException("Token is missing or invalid");
+            throw new UnauthorizedException("Token is missing or invalid !!!");
         }
 
         String token = header.substring(7);

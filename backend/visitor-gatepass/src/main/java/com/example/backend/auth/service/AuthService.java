@@ -27,7 +27,10 @@ public class AuthService {
 
         // 🔍 Find user
         User user = repo.findByEmail(email)
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() ->
+                        new UnauthorizedException("Invalid email or password")
+                );
+
 
         // 🔐 Password check (IMPORTANT FIX)
         if (!encoder.matches(password, user.getPassword())) {
