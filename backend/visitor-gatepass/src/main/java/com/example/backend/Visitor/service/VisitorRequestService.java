@@ -8,6 +8,7 @@ import com.example.backend.Visitor.repository.VisitorRequestRepository;
 import com.example.backend.config.EmailService;
 import com.example.backend.payload.ApiResponse;
 import com.example.backend.utils.GatePassUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,8 +32,13 @@ public class VisitorRequestService {
     // ✅ CREATE VISITOR + OTP
     public ApiResponse createRequest(VisitorRequestDto dto) {
 
+        // 🔥 VALIDATION
+        if (dto.getEmployeeId() == null) {
+            throw new RuntimeException("EmployeeId is required");
+        }
+
         Employee emp = employeeRepo.findById(dto.getEmployeeId())
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + dto.getEmployeeId()));
 
         VisitorRequest vr = new VisitorRequest();
         vr.setVisitorName(dto.getVisitorName());
@@ -41,6 +47,7 @@ public class VisitorRequestService {
         vr.setVisitDate(dto.getVisitDate());
         vr.setEmployee(emp);
 
+        // 🔥 OTP + GatePass
         String otp = util.generateOTP();
         String gatePass = util.generateGatePass();
 
@@ -48,9 +55,11 @@ public class VisitorRequestService {
         vr.setGatePassCode(gatePass);
         vr.setStatus("PENDING");
 
-        emailService.sendOtp(dto.getEmail(), otp);
-
+        // 🔥 SAVE FIRST (better practice)
         repo.save(vr);
+
+        // 🔥 SEND EMAIL
+        emailService.sendOtp(dto.getEmail(), otp);
 
         return new ApiResponse("Visitor Created + OTP Sent", vr);
     }
@@ -65,7 +74,7 @@ public class VisitorRequestService {
         return repo.findByEmail(email);
     }
 
-    // ✅ VERIFY OTP (APPROVAL)
+    // ✅ VERIFY OTP
     public ApiResponse verifyOtp(String email, String otp) {
 
         List<VisitorRequest> list = repo.findByEmail(email);
@@ -74,12 +83,11 @@ public class VisitorRequestService {
             return new ApiResponse("Visitor not found", null);
         }
 
-        VisitorRequest vr = list.get(list.size() - 1); // latest
+        VisitorRequest vr = list.get(list.size() - 1);
 
         if (vr.getOtp().equals(otp)) {
             vr.setStatus("APPROVED");
             repo.save(vr);
-
             return new ApiResponse("OTP Verified ✅ Gate Pass Approved", vr);
         } else {
             return new ApiResponse("Invalid OTP ❌", null);
@@ -109,8 +117,11 @@ public class VisitorRequestService {
     // ✅ DELETE
     public ApiResponse deleteVisitor(Long id) {
 
-        repo.deleteById(id);
+        if (!repo.existsById(id)) {
+            return new ApiResponse("Visitor not found", null);
+        }
 
+        repo.deleteById(id);
         return new ApiResponse("Visitor Deleted Successfully", null);
     }
 }

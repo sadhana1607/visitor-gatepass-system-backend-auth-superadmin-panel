@@ -31,173 +31,162 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // ✅ CREATE EMPLOYEE
+    // 🔥 CREATE EMPLOYEE
     @Override
     public EmpResponse createEmployee(EmpRequest request, User loggedInUser) {
 
-        // 🔥 FIX: Unauthorized exception
         if (!loggedInUser.getRole().equals(Role.ORG_ADMIN)) {
             throw new UnauthorizedException("Only ORG_ADMIN can create employees");
         }
 
         Organization org = loggedInUser.getOrganization();
 
-        // 🔥 Duplicate email
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new BadRequestException("Email already exists");
         }
-
-        Employee employee = new Employee();
 
         // 🔥 Create User
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode("default123"));
+        user.setPassword(passwordEncoder.encode("123456"));
         user.setStatus("ACTIVE");
+        user.setOrganization(org);
 
-        // 🔥 Role Handling
-        if ("ORGADMIN".equalsIgnoreCase(request.getRole())) {
+        // 🔥 Role fix
+        if ("ORG_ADMIN".equalsIgnoreCase(request.getRole())) {
             user.setRole(Role.ORG_ADMIN);
-
         } else if ("SECURITY".equalsIgnoreCase(request.getRole())) {
             user.setRole(Role.SECURITY);
-
-            // 🔥 Shift validation
-            try {
-                LocalTime start = LocalTime.parse(request.getShiftStart());
-                LocalTime end = LocalTime.parse(request.getShiftEnd());
-
-                if (end.isBefore(start)) {
-                    throw new BadRequestException("Shift end must be after start");
-                }
-
-                employee.setShiftStart(start);
-                employee.setShiftEnd(end);
-
-            } catch (Exception e) {
-                throw new BadRequestException("Invalid shift time format (HH:mm required)");
-            }
-
         } else {
             user.setRole(Role.EMPLOYEE);
         }
 
-        user.setOrganization(org);
         User savedUser = userRepository.save(user);
 
         // 🔥 Create Employee
+        Employee employee = new Employee();
         employee.setName(request.getName());
         employee.setEmail(request.getEmail());
         employee.setDepartment(request.getDepartment());
+        employee.setPhone(request.getPhone());              // ✅ FIX
+        employee.setDesignation(request.getDesignation());  // ✅ FIX
         employee.setStatus("ACTIVE");
         employee.setOrganization(org);
         employee.setUser(savedUser);
+
+        // 🔥 Shift for ALL roles
+        try {
+            LocalTime start = LocalTime.parse(request.getShiftStart());
+            LocalTime end = LocalTime.parse(request.getShiftEnd());
+
+            if (end.isBefore(start)) {
+                throw new BadRequestException("Shift end must be after start");
+            }
+
+            employee.setShiftStart(start);
+            employee.setShiftEnd(end);
+
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid shift format (HH:mm:ss)");
+        }
 
         Employee savedEmployee = employeeRepository.save(employee);
 
         return mapToResponse(savedEmployee, "Employee created successfully");
     }
 
-    // ✅ UPDATE EMPLOYEE
+    // 🔥 UPDATE EMPLOYEE
     @Override
     public EmpResponse updateEmployee(Long id, EmpRequest request) {
 
         Employee emp = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         User user = emp.getUser();
 
         emp.setName(request.getName());
         emp.setEmail(request.getEmail());
         emp.setDepartment(request.getDepartment());
+        emp.setPhone(request.getPhone());
+        emp.setDesignation(request.getDesignation());
 
         // 🔥 Role update
         if (request.getRole() != null) {
             try {
                 user.setRole(Role.valueOf(request.getRole().toUpperCase()));
             } catch (Exception e) {
-                throw new BadRequestException("Invalid role value");
+                throw new BadRequestException("Invalid role");
             }
         }
 
-        // 🔥 Shift validation
-        if ("SECURITY".equalsIgnoreCase(request.getRole())) {
-            try {
-                LocalTime start = LocalTime.parse(request.getShiftStart());
-                LocalTime end = LocalTime.parse(request.getShiftEnd());
+        // 🔥 Shift update
+        try {
+            LocalTime start = LocalTime.parse(request.getShiftStart());
+            LocalTime end = LocalTime.parse(request.getShiftEnd());
 
-                if (end.isBefore(start)) {
-                    throw new BadRequestException("Shift end must be after start");
-                }
-
-                emp.setShiftStart(start);
-                emp.setShiftEnd(end);
-
-            } catch (Exception e) {
-                throw new BadRequestException("Invalid shift time format");
+            if (end.isBefore(start)) {
+                throw new BadRequestException("Shift end must be after start");
             }
 
-        } else {
-            emp.setShiftStart(null);
-            emp.setShiftEnd(null);
+            emp.setShiftStart(start);
+            emp.setShiftEnd(end);
+
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid shift format");
         }
 
         userRepository.save(user);
-        Employee savedEmployee = employeeRepository.save(emp);
+        Employee updated = employeeRepository.save(emp);
 
-        return mapToResponse(savedEmployee, "Employee updated successfully");
+        return mapToResponse(updated, "Employee updated successfully");
     }
 
-    // ✅ GET BY ID
+    // 🔥 GET BY ID
     @Override
     public EmpResponse getEmployeeById(Long id) {
-
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
-
-        return mapToResponse(employee, "Employee fetched successfully");
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+        return mapToResponse(emp, "Employee fetched");
     }
 
-    // ✅ UPDATE STATUS
+    // 🔥 UPDATE STATUS
     @Override
     public EmpResponse updateEmployeeStatus(Long id, String status) {
 
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         if (!status.equalsIgnoreCase("ACTIVE") &&
                 !status.equalsIgnoreCase("INACTIVE")) {
-            throw new BadRequestException("Invalid status (Use ACTIVE / INACTIVE)");
+            throw new BadRequestException("Invalid status");
         }
 
-        employee.setStatus(status.toUpperCase());
+        emp.setStatus(status.toUpperCase());
+        emp.getUser().setStatus(status.toUpperCase());
 
-        User user = employee.getUser();
-        user.setStatus(status.toUpperCase());
+        userRepository.save(emp.getUser());
+        Employee updated = employeeRepository.save(emp);
 
-        userRepository.save(user);
-        Employee updatedEmployee = employeeRepository.save(employee);
-
-        return mapToResponse(updatedEmployee, "Employee status updated successfully");
+        return mapToResponse(updated, "Status updated");
     }
 
-    // ✅ GET ALL
+    // 🔥 GET ALL
     @Override
     public List<EmpResponse> getAllEmployees() {
 
-        List<Employee> employees = employeeRepository.findAll();
+        List<Employee> list = employeeRepository.findAll();
 
-        if (employees.isEmpty()) {
+        if (list.isEmpty()) {
             throw new ResourceNotFoundException("No employees found");
         }
 
-        return employees.stream()
-                .map(emp -> mapToResponse(emp, "Employee fetched successfully"))
+        return list.stream()
+                .map(emp -> mapToResponse(emp, "Fetched"))
                 .toList();
     }
 
-    // 🔥 COMMON RESPONSE METHOD (Clean code)
+    // 🔥 COMMON RESPONSE
     private EmpResponse mapToResponse(Employee emp, String message) {
         return new EmpResponse(
                 emp.getId(),
@@ -205,8 +194,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 emp.getEmail(),
                 emp.getDepartment(),
                 emp.getUser().getRole().name(),
-                emp.getShiftStart() != null ? emp.getShiftStart().toString() : null,
-                emp.getShiftEnd() != null ? emp.getShiftEnd().toString() : null,
+                emp.getShiftStart().toString(),
+                emp.getShiftEnd().toString(),
                 message,
                 emp.getStatus()
         );
