@@ -1,19 +1,14 @@
 import axiosClient from "./axiosClient";
 
-/**
- * Get users by role
- */
+// ✅ GET USERS BY ROLE
 export const getUsersByRole = (role) => {
-  return axiosClient.get("/users", {
-    params: { role }
-  });
+  return axiosClient.get(`/users/role/${role}`);
 };
 
-/**
- * ✅ RENAMED FUNCTION (IMPORTANT FIX)
- */
+// ✅ UPDATE USER STATUS
 export const updateUserStatus = (id, status) => {
-  return axiosClient.put(`/employee/status/${id}/`, null, {
-    params: { status }
-  });
+  return axiosClient.put(
+    `/employee/status/${id}/`,null,   // 🔥 FIXED endpoint
+    { status }
+  );
 };

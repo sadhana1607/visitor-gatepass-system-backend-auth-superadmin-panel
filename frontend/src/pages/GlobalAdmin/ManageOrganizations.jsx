@@ -38,8 +38,9 @@ export default function ManageOrganizations({ addToast }) {
       const res = await getAllOrganizations();
       setOrgs(res.data);
     } catch (err) {
-      addToast("❌ Failed to load data", "error");
-    }
+        console.log("GET ORGS ERROR:", err);
+        addToast("❌ Failed to load data", "error");
+      }
   };
 
   const setField = (key, val) => {

@@ -4,8 +4,6 @@ import {
   updateUserStatus
 } from "../../api/userApi.js";
 
-import { getAllOrganizations } from "../../api/organizationApi.js";
-
 const ini = (n) =>
   n?.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
 
@@ -21,58 +19,39 @@ const AV_COLORS = [
 export default function AllUsers({ addToast }) {
 
   const [users, setUsers] = useState([]);
-  const [orgs, setOrgs] = useState([]);
   const [search, setSearch] = useState("");
-  const [orgFilter, setOrgFilter] = useState("all");
 
   useEffect(() => {
     fetchOrgAdmins();
-    fetchOrganizations();
   }, []);
 
-  // USERS
+  // 🔥 USERS
   const fetchOrgAdmins = async () => {
     try {
       const res = await getUsersByRole("ORG_ADMIN");
 
-      const updated = (res.data || []).map(u => ({
-        ...u,
-        status: u.status || "inactive"
-      }));
+      // ✅ Direct use (DTO response)
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data?.data || res.data?.content || [];
 
-      setUsers(updated);
+      setUsers(data);
+
     } catch (err) {
-      console.log(err);
+      console.log("ERROR:", err.response || err.message);
       addToast("❌ Failed to load org admins", "error");
     }
   };
 
-  // ORGS
-  const fetchOrganizations = async () => {
-    try {
-      const res = await getAllOrganizations();
-      setOrgs(res.data || []);
-    } catch (err) {
-      console.log(err);
-      addToast("❌ Failed to load organizations", "error");
-    }
-  };
-
-  // ORG MAP (BIGINT SAFE)
-  const orgMap = (orgs || []).reduce((acc, org) => {
-    acc[String(org.id)] = org.name;
-    return acc;
-  }, {});
-
-  // TOGGLE STATUS
+  // 🔥 TOGGLE STATUS
   const toggleStatus = async (u) => {
     const newStatus = u.status === "active" ? "inactive" : "active";
 
     try {
       await updateUserStatus(u.id, newStatus);
 
-      setUsers((prev) =>
-        prev.map((x) =>
+      setUsers(prev =>
+        prev.map(x =>
           x.id === u.id ? { ...x, status: newStatus } : x
         )
       );
@@ -81,31 +60,28 @@ export default function AllUsers({ addToast }) {
         `${u.name} set to ${newStatus}`,
         newStatus === "active" ? "success" : "info"
       );
+
     } catch (err) {
       console.log(err);
       addToast("❌ Status update failed", "error");
     }
   };
 
+  // 🔥 FILTER
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
 
-    const matchSearch =
+    return (
       !search ||
       u.name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q);
-
-    const matchOrg =
-      orgFilter === "all" ||
-      String(u.organization_id) === String(orgFilter);
-
-    return matchSearch && matchOrg;
+      u.email?.toLowerCase().includes(q)
+    );
   });
 
   return (
     <div className="page">
 
-      {/* INTERNAL CSS */}
+      {/* INTERNAL CSS (UNCHANGED) */}
       <style>{`
         .toggle-btn {
           padding: 6px 14px;
@@ -185,19 +161,6 @@ export default function AllUsers({ addToast }) {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
-          <select
-            className="f-control"
-            value={orgFilter}
-            onChange={(e) => setOrgFilter(e.target.value)}
-          >
-            <option value="all">All Organizations</option>
-            {orgs.map(o => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="overflow-x-auto">
@@ -254,9 +217,9 @@ export default function AllUsers({ addToast }) {
                         </div>
                       </td>
 
-                      {/* ORG */}
+                      {/* ✅ ORGANIZATION (DTO FIELD) */}
                       <td>
-                        {orgMap[String(u.organization_id)] || "Unknown Organization"}
+                        {u.organizationName || "No Organization"}
                       </td>
 
                       {/* STATUS */}
@@ -268,7 +231,7 @@ export default function AllUsers({ addToast }) {
                         </span>
                       </td>
 
-                      {/* ACTION TOGGLE */}
+                      {/* ACTION */}
                       <td>
                         <button
                           onClick={() => toggleStatus(u)}
@@ -279,6 +242,7 @@ export default function AllUsers({ addToast }) {
                           {u.status === "active" ? "Active" : "Inactive"}
                         </button>
                       </td>
+
                     </tr>
                   );
                 })
