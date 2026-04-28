@@ -1,6 +1,8 @@
 package com.example.backend.organization.service;
 
 import com.example.backend.Org_Req.dto.request.OrgRequest;
+import com.example.backend.employee.model.Employee;
+import com.example.backend.employee.repository.EmployeeRepository;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.Org_Req.dto.response.OrgResponse;
 import com.example.backend.organization.model.Organization;
@@ -24,6 +26,9 @@ public class OrganizationService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
 
     // ✅ GET ALL
     public List<OrgResponse> getAllOrganizations() {
@@ -59,16 +64,23 @@ public class OrganizationService {
 
         org.setStatus("APPROVED");
 
-        // Activate admin
+        // 🔹 Activate admin (User)
         User admin = userRepository.findByOrganizationAndRole(org, Role.ORG_ADMIN);
+
         if (admin != null) {
             admin.setStatus("ACTIVE");
             userRepository.save(admin);
+
+            // 🔥 ALSO ACTIVATE EMPLOYEE
+            Employee emp = employeeRepository.findByUser(admin);
+            if (emp != null) {
+                emp.setStatus("ACTIVE");
+                employeeRepository.save(emp);
+            }
         }
 
         Organization saved = organizationRepository.save(org);
 
-        // ✅ Return clean response
         return new OrgResponse(
                 saved.getName(),
                 admin != null ? admin.getEmail() : null,
@@ -77,7 +89,7 @@ public class OrganizationService {
         );
     }
 
-    // ✅ REJECT
+    //Reject
     @Transactional
     public OrgResponse rejectOrganization(Long id) {
 
@@ -90,11 +102,19 @@ public class OrganizationService {
 
         org.setStatus("REJECTED");
 
-        // Deactivate admin
+        // 🔹 Deactivate admin (User)
         User admin = userRepository.findByOrganizationAndRole(org, Role.ORG_ADMIN);
+
         if (admin != null) {
             admin.setStatus("INACTIVE");
             userRepository.save(admin);
+
+            // 🔥 ALSO DEACTIVATE EMPLOYEE
+            Employee emp = employeeRepository.findByUser(admin);
+            if (emp != null) {
+                emp.setStatus("INACTIVE");
+                employeeRepository.save(emp);
+            }
         }
 
         Organization saved = organizationRepository.save(org);

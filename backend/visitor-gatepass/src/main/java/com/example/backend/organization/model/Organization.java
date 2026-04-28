@@ -54,12 +54,13 @@ public class Organization {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     // Constructor
     public Organization() {
         this.createdAt = LocalDateTime.now();
         this.status = "PENDING";
     }
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 }

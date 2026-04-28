@@ -4,8 +4,7 @@ import com.example.backend.auth.service.TokenBlacklistService;
 import com.example.backend.config.JwtUtil;
 import com.example.backend.user.service.CustomUserDetailsService;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.SignatureException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,12 +33,13 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private TokenBlacklistService blacklistService;
 
+    // ✅ Skip public APIs
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
 
-        return path.startsWith("/api/auth") ||
-                path.startsWith("/api/org-req");
+        return path.startsWith("/api/auth/") ||   // ✅ FIXED
+                path.equals("/api/org-req/create");
     }
 
     @Override
@@ -50,47 +50,55 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String header = request.getHeader("Authorization");
 
-        // ✅ No token → skip
-        if (header == null || !header.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (header != null && header.startsWith("Bearer ")) {
 
-        String token = header.substring(7);
+            String token = header.substring(7);
 
-        try {
-            if (blacklistService.isBlacklisted(token)) {
+            try {
+                // 🔴 Check blacklist
+                if (blacklistService.isBlacklisted(token)) {
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Token is blacklisted\"}");
+                    return;
+                }
+
+                // 🔴 Extract email (this also validates token)
+                String email = jwtUtil.extractEmail(token);
+
+                // 🔴 Load user
+                UserDetails userDetails =
+                        userDetailsService.loadUserByUsername(email);
+
+                // 🔴 Set authentication
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+
+                SecurityContextHolder.getContext().setAuthentication(auth);
+
+            } catch (SignatureException e) {
+
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                response.getWriter().write("Token is invalid (logged out)");
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Invalid token signature\"}");
+                return;
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Invalid or expired token\"}");
                 return;
             }
-
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(jwtUtil.getKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            String email = claims.getSubject();
-
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(email);
-
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-        } catch (Exception e) {
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.getWriter().write("Invalid or expired token");
-            return;
         }
 
+        // Continue filter chain
         filterChain.doFilter(request, response);
     }
 }

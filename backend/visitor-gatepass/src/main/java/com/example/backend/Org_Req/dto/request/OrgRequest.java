@@ -1,10 +1,7 @@
-
 package com.example.backend.Org_Req.dto.request;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+
 import lombok.Data;
+import jakarta.validation.constraints.*;
 
 @Data
 public class OrgRequest {
@@ -22,11 +19,10 @@ public class OrgRequest {
     @NotBlank(message = "City is required")
     private String city;
 
-    @NotBlank(message = "Type is required")
     private String type;
 
     @Pattern(
-            regexp = "^(https?://)?(www\\.)?[a-zA-Z0-9\\-]+\\.[a-zA-Z]{2,}$",
+            regexp = "^(https?://)?(www\\.)?.+\\..+$",
             message = "Invalid website URL"
     )
     private String website;
@@ -41,4 +37,6 @@ public class OrgRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String adminPassword;
+
+    private String status; // optional (can remove if not needed)
 }

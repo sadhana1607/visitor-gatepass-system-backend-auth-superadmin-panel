@@ -35,15 +35,12 @@ public class Employee {
     private String email;
 
     // ✅ Shift start required
-
-    @Column(name = "shift_start")
+    @NotNull(message = "Shift start time is required")
     private LocalTime shiftStart;
 
     // ✅ Shift end required
-
-    @Column(name = "shift_end")
+    @NotNull(message = "Shift end time is required")
     private LocalTime shiftEnd;
-
 
     // ✅ Status required
     @NotBlank(message = "Status is required (ACTIVE / INACTIVE)")
@@ -72,8 +69,6 @@ public class Employee {
 
     // 🔗 One Employee → One User
     @OneToOne
-    @JoinColumn(name = "user_id",nullable = false)
+    @JoinColumn(name = "user_id")
     private User user;
-
-
 }

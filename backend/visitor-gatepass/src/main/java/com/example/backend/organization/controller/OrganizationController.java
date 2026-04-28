@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/org")
-@CrossOrigin("*")
+
 public class OrganizationController {
 
     @Autowired

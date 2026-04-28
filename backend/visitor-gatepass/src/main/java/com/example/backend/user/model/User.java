@@ -21,7 +21,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
-private String Status;
+    private String status;
     // 🔗 Many Users → One Organization
     @ManyToOne
     @JoinColumn(name = "organization_id")

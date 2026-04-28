@@ -1,8 +1,12 @@
 package com.example.backend.employee.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor   // 🔥 required for Jackson
+@AllArgsConstructor  // 🔥 optional but useful
 public class EmpResponse {
 
     private Long id;
@@ -10,27 +14,8 @@ public class EmpResponse {
     private String email;
     private String department;
     private String role;
-    private String phone;
-    private String designation;
-
     private String status;
     private String shiftStart;
     private String shiftEnd;
-    private String message; // ✅ ADD THIS
-
-    public EmpResponse(Long id, String name, String email,
-                       String department, String role,
-                       String shiftStart, String shiftEnd,String message,String status) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.department = department;
-        this.role = role; // ✅ FIXED
-        this.shiftStart = shiftStart;
-        this.shiftEnd = shiftEnd;
-        this.message = message;
-        this.status = status;
-    }
-
-
+    private String message;
 }

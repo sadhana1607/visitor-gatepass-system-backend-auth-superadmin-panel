@@ -1,5 +1,7 @@
 package com.example.backend.Org_Req.service;
 
+import com.example.backend.employee.model.Employee;
+import com.example.backend.employee.repository.EmployeeRepository;
 import com.example.backend.exception.BadRequestException;
 import com.example.backend.organization.model.Organization;
 import com.example.backend.organization.repository.OrganizationRepository;
@@ -10,10 +12,9 @@ import com.example.backend.user.model.Role;
 import com.example.backend.user.repository.UserRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 @Service
 public class OrgReqService {
 
@@ -24,14 +25,19 @@ public class OrgReqService {
     private UserRepository userRepo;
 
     @Autowired
-    private BCryptPasswordEncoder encoder;
+    private EmployeeRepository employeeRepo;
+
+    @Autowired
+    private PasswordEncoder encoder;
 
     @Transactional
-    public OrgResponse createRequest(OrgRequest request) {
+    public OrgResponse createRequest(OrgRequest req) {
 
-        String orgEmail = request.getEmail().toLowerCase();
-        String adminEmail = request.getAdminEmail().toLowerCase();
+        // 🔹 Normalize
+        String orgEmail = req.getEmail().toLowerCase();
+        String adminEmail = req.getAdminEmail().toLowerCase();
 
+        // 🔹 Duplicate checks
         if (orgRepo.existsByEmail(orgEmail)) {
             throw new BadRequestException("Organization email already exists");
         }
@@ -40,53 +46,63 @@ public class OrgReqService {
             throw new BadRequestException("Admin email already exists");
         }
 
-        String password = request.getAdminPassword();
+        // 🔹 Validate password
+        String password = req.getAdminPassword();
 
-        if (password.length() < 6) {
+        if (password == null || password.length() < 6) {
             throw new BadRequestException("Password must be at least 6 characters");
         }
 
         if (!password.matches(".*[A-Z].*")) {
-            throw new BadRequestException("Password must contain at least one uppercase letter");
+            throw new BadRequestException("Password must contain uppercase letter");
         }
 
         if (!password.matches(".*\\d.*")) {
-            throw new BadRequestException("Password must contain at least one number");
+            throw new BadRequestException("Password must contain number");
         }
 
-        // ✅ 1. Create Organization (DO NOT SAVE YET)
-        Organization org = new Organization();
-        org.setName(request.getName());
-        org.setEmail(orgEmail);
-        org.setAddress(request.getAddress());
-        org.setCity(request.getCity());
-        org.setType(request.getType());
-        org.setWebsite(request.getWebsite());
-        org.setStatus("PENDING");
-
-        // ✅ 2. Create User
+        // 🔹 Create User (ORG ADMIN)
         User user = new User();
-        user.setName(request.getAdminName());
+        user.setName(req.getAdminName());
         user.setEmail(adminEmail);
         user.setPassword(encoder.encode(password));
         user.setRole(Role.ORG_ADMIN);
         user.setStatus("INACTIVE");
 
-        // ✅ 3. SET RELATION (CRITICAL 🔥)
-        user.setOrganization(org);
+        // 🔹 Create Organization
+        Organization org = new Organization();
+        org.setName(req.getName());
+        org.setEmail(orgEmail);
+        org.setAddress(req.getAddress());
+        org.setCity(req.getCity());
+        org.setType(req.getType());
+        org.setWebsite(req.getWebsite());
+        org.setStatus("PENDING");
+
+        // 🔗 Link org ↔ user
         org.setUser(user);
 
-        // ✅ 4. SAVE USER FIRST (so user_id exists)
-        userRepo.save(user);
-
-        // ✅ 5. NOW SAVE ORG (user_id is available)
+        // 🔹 Save org (user saved via cascade)
         Organization savedOrg = orgRepo.save(org);
+
+        // 🔥 CREATE EMPLOYEE FOR ADMIN
+        Employee emp = new Employee();
+        emp.setName(user.getName());
+        emp.setEmail(user.getEmail());
+        emp.setStatus("INACTIVE");
+
+        emp.setUser(user);                 // 🔗 link user
+        emp.setOrganization(savedOrg);     // 🔗 link org
+
+        employeeRepo.save(emp);
 
         return new OrgResponse(
                 savedOrg.getName(),
-                user.getEmail(),
+                adminEmail,
                 savedOrg.getStatus(),
                 "Waiting for SuperAdmin approval"
         );
     }
+
+
 }
