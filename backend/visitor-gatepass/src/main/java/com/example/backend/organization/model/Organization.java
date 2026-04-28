@@ -1,5 +1,6 @@
 package com.example.backend.organization.model;
 
+import com.example.backend.user.model.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -52,6 +53,10 @@ public class Organization {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     // Constructor
     public Organization() {

@@ -4,8 +4,7 @@ import com.example.backend.auth.service.TokenBlacklistService;
 import com.example.backend.config.JwtUtil;
 import com.example.backend.user.service.CustomUserDetailsService;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.SignatureException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,6 +33,15 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private TokenBlacklistService blacklistService;
 
+    // ✅ Skip public APIs
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        return path.startsWith("/api/auth/") ||   // ✅ FIXED
+                path.equals("/api/org-req/create");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -50,21 +58,17 @@ public class JwtFilter extends OncePerRequestFilter {
                 // 🔴 Check blacklist
                 if (blacklistService.isBlacklisted(token)) {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                    response.getWriter().write("Token is invalid (logged out)");
-                    return; // 🔥 STOP request
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Token is blacklisted\"}");
+                    return;
                 }
 
-                // 🔴 Parse token
-                Claims claims = Jwts.parserBuilder()
-                        .setSigningKey(jwtUtil.getKey())
-                        .build()
-                        .parseClaimsJws(token)
-                        .getBody();
-
-                String email = claims.getSubject();
+                // 🔴 Extract email (this also validates token)
+                String email = jwtUtil.extractEmail(token);
 
                 // 🔴 Load user
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                UserDetails userDetails =
+                        userDetailsService.loadUserByUsername(email);
 
                 // 🔴 Set authentication
                 UsernamePasswordAuthenticationToken auth =
@@ -76,15 +80,25 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
+            } catch (SignatureException e) {
+
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Invalid token signature\"}");
+                return;
+
             } catch (Exception e) {
 
-                // 🔴 Invalid / expired token
+                e.printStackTrace();
+
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                response.getWriter().write("Invalid or expired token");
-                return; // 🔥 STOP request
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Invalid or expired token\"}");
+                return;
             }
         }
 
+        // Continue filter chain
         filterChain.doFilter(request, response);
     }
 }

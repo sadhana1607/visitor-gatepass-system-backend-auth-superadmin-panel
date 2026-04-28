@@ -27,18 +27,18 @@ public class GatePassController {
         return ResponseEntity.ok(service.createVisitor(gp));
     }
 
-    // 2. VERIFY OTP
-    @PostMapping("/visitor/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody GatePass request) {
-
-        GatePass result = service.verifyOtp(request.getOtp());
-
-        if (result == null) {
-            return ResponseEntity.badRequest().body("Invalid OTP");
-        }
-
-        return ResponseEntity.ok(result);
-    }
+//    // 2. VERIFY OTP
+//    @PostMapping("/visitor/verify-otp")
+//    public ResponseEntity<?> verifyOtp(@RequestBody GatePass request) {
+//
+//        GatePass result = service.verifyOtp(request.getOtp());
+//
+//        if (result == null) {
+//            return ResponseEntity.badRequest().body("Invalid OTP");
+//        }
+//
+//        return ResponseEntity.ok(result);
+//    }
 
     // 3. EXIT VISITOR
     @PutMapping("/visitor/exit/{id}")

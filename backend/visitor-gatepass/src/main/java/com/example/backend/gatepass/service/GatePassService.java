@@ -53,24 +53,24 @@ public class GatePassService {
         return saved;
     }
 
-    // 2. VERIFY OTP (ENTRY)
-    public GatePass verifyOtp(String otp) {
-        GatePass gp = repo.findByOtp(otp).orElse(null);
-
-        if (gp != null) {
-            gp.setVerified(true);
-
-            gp.setEntryTime(LocalDateTime.now());
-
-            // Expected exit after 30 min
-            gp.setExpectedExitTime(LocalDateTime.now().plusMinutes(30));
-
-            GatePass updated = repo.save(gp);
-            log(updated.getId(), "OTP Verified");
-            return updated;
-        }
-        return null;
-    }
+//    // 2. VERIFY OTP (ENTRY)
+//    public GatePass verifyOtp(String otp) {
+//        GatePass gp = repo.findByOtp(otp).orElse(null);
+//
+//        if (gp != null) {
+//            gp.setVerified(true);
+//
+//            gp.setEntryTime(LocalDateTime.now());
+//
+//            // Expected exit after 30 min
+//            gp.setExpectedExitTime(LocalDateTime.now().plusMinutes(30));
+//
+//            GatePass updated = repo.save(gp);
+//            log(updated.getId(), "OTP Verified");
+//            return updated;
+//        }
+//        return null;
+//    }
 
     // 3. EXIT VISITOR
     public GatePass exitVisitor(Long id) {

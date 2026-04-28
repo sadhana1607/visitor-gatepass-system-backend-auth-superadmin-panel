@@ -21,10 +21,9 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
-private String Status;
+    private String status;
     // 🔗 Many Users → One Organization
-    @ManyToOne
-    @JoinColumn(name = "organization_id")
+    @OneToOne(mappedBy = "user")
     private Organization organization;
 
     // Getters & Setters
