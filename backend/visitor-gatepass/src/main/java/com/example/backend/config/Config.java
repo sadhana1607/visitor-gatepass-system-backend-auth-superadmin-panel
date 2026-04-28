@@ -22,14 +22,16 @@ public class Config {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http.csrf(csrf -> csrf.disable())
+        http
+                .cors(cors -> {})
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/org-req/create").permitAll()
-
+                        .requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
                         .requestMatchers("/api/org/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/api/employee/**").hasRole("ORG_ADMIN")
+                        .requestMatchers("/api/employee/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
                         .requestMatchers("/api/visitor/**").hasRole("EMPLOYEE")
 
                         .anyRequest().authenticated()

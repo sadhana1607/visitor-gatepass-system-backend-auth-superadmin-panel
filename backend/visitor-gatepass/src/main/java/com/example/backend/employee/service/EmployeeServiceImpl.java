@@ -157,20 +157,31 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
+        // ✅ Validate status
         if (!status.equalsIgnoreCase("ACTIVE") &&
                 !status.equalsIgnoreCase("INACTIVE")) {
             throw new BadRequestException("Invalid status");
         }
 
-        emp.setStatus(status.toUpperCase());
-        emp.getUser().setStatus(status.toUpperCase());
+        String newStatus = status.toUpperCase();
 
-        userRepository.save(emp.getUser());
+        // ✅ Update employee
+        emp.setStatus(newStatus);
+
+        // ✅ Update user (SAFE)
+        User user = emp.getUser();
+        if (user != null) {
+            user.setStatus(newStatus);
+            userRepository.save(user);
+        } else {
+            // Optional: log instead of throwing
+            System.out.println("⚠ Employee has no linked user: ID = " + id);
+        }
+
         Employee updated = employeeRepository.save(emp);
 
-        return mapToResponse(updated, "Status updated");
+        return mapToResponse(updated, "Status updated successfully");
     }
-
     // 🔥 GET ALL
     @Override
     public List<EmpResponse> getAllEmployees() {

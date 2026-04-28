@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -60,11 +61,11 @@ public class EmployeeController {
 
     // 🔥 UPDATE STATUS
     @PutMapping("/status/{id}")
-    public ResponseEntity<EmpResponse> updateEmployeeStatus(
+    public EmpResponse updateStatus(
             @PathVariable Long id,
-            @RequestParam String status
+            @RequestBody Map<String, String> body
     ) {
-        return ResponseEntity.ok(service.updateEmployeeStatus(id, status));
+        return service.updateEmployeeStatus(id, body.get("status"));
     }
 
     // ✅ GET ALL

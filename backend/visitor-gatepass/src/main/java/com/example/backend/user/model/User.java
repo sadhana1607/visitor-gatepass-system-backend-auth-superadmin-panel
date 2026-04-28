@@ -23,7 +23,8 @@ public class User {
     private Role role;
     private String status;
     // 🔗 Many Users → One Organization
-    @OneToOne(mappedBy = "user")
+    @ManyToOne
+    @JoinColumn(name = "organization_id")
     private Organization organization;
 
     // Getters & Setters
