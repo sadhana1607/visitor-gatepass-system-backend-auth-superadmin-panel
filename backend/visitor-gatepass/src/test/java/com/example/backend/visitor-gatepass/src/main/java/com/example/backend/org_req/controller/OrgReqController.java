@@ -17,7 +17,7 @@ public class OrgReqController {
 
     // CREATE ORGANIZATION REQUEST (NO LOGIN)
     @PostMapping("/create")
-    public OrgResponse create(@RequestBody OrgRequest request) {
-        return service.createRequest(request);
+    public OrgResponse create(@RequestBody OrgRequest req) {
+        return service.createRequest(req);
     }
 }
