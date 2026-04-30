@@ -22,6 +22,7 @@ public class DataInitializer {
             admin.setEmail("apreakanksha@gmail.com");
             admin.setPassword(encoder.encode("admin123"));
             admin.setRole(Role.SUPER_ADMIN);
+            admin.setOrganization(null);
             admin.setStatus("ACTIVE");
 
             repo.save(admin);

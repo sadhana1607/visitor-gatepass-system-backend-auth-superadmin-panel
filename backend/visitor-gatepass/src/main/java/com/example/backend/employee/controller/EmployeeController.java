@@ -1,14 +1,13 @@
 package com.example.backend.employee.controller;
 
 import com.example.backend.employee.dto.request.EmpRequest;
+import com.example.backend.employee.dto.request.UpdateStatusRequest;
 import com.example.backend.employee.dto.response.EmpResponse;
 import com.example.backend.employee.service.EmployeeService;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.model.User;
 import com.example.backend.user.repository.UserRepository;
 
-import com.example.backend.user.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -28,33 +26,26 @@ public class EmployeeController {
     @Autowired
     private UserRepository userRepository;
 
-     @Autowired
-     private CustomUserDetailsService userService;
-    // 🔥 CREATE EMPLOYEE
+    // CREATE EMPLOYEE
     @PostMapping("/create")
     public ResponseEntity<EmpResponse> createEmployee(
             @Valid @RequestBody EmpRequest request,
             Authentication authentication
     ) {
-
         String email = authentication.getName();
-
-        // 🔥 FIX: BadRequest ❌ → ResourceNotFound ✅
         User loggedInUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        EmpResponse response = service.createEmployee(request, loggedInUser);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(service.createEmployee(request, loggedInUser));
     }
 
-    // ✅ GET BY ID
+    // GET BY ID
     @GetMapping("/{id}")
     public ResponseEntity<EmpResponse> getEmployeeById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getEmployeeById(id));
     }
 
-    // 🔥 UPDATE EMPLOYEE
+    // UPDATE EMPLOYEE
     @PutMapping("/update/{id}")
     public ResponseEntity<EmpResponse> updateEmployee(
             @PathVariable Long id,
@@ -63,19 +54,19 @@ public class EmployeeController {
         return ResponseEntity.ok(service.updateEmployee(id, request));
     }
 
-    // 🔥 UPDATE STATUS
+    // UPDATE STATUS
     @PutMapping("/status/{id}")
-    public EmpResponse updateStatus(
+    public ResponseEntity<EmpResponse> updateStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body
+            @Valid @RequestBody UpdateStatusRequest request
     ) {
-        return service.updateEmployeeStatus(id, body.get("status"));
+        return ResponseEntity.ok(service.updateEmployeeStatus(id, request.status()));
     }
-    // ✅ GET ALL
+
+    // GET ALL
     @GetMapping("/all")
     public ResponseEntity<List<EmpResponse>> getAllEmployees() {
         return ResponseEntity.ok(service.getAllEmployees());
     }
-
 
 }

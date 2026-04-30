@@ -24,7 +24,7 @@ public class User {
     private String status;
     // 🔗 Many Users → One Organization
     @ManyToOne
-    @JoinColumn(name = "organization_id")
+    @JoinColumn(name = "organization_id", nullable = true)  // ✅ allow NULL for SuperAdmin
     private Organization organization;
 
     // Getters & Setters

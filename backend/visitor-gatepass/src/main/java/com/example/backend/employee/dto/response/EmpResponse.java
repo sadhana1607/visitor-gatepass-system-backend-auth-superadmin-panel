@@ -1,5 +1,6 @@
 package com.example.backend.employee.dto.response;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,5 +21,8 @@ public class EmpResponse {
     private String phone;
     private String message;
 
-
+    public record UpdateStatusRequest(
+            @NotBlank(message = "Status must not be blank")
+            String status
+    ) {}
 }

@@ -35,6 +35,7 @@ public class Config {
                         .requestMatchers("/api/org/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/employee/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
                         .requestMatchers("/api/visitor/**").hasRole("EMPLOYEE")
+                        .requestMatchers("/api.reports/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
 
                         .anyRequest().authenticated()
                 )

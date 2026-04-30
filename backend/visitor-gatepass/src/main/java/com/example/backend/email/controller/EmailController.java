@@ -17,25 +17,29 @@ public class EmailController {
     @Autowired
     private EmailService emailService;
 
-    // 📥 Inbox
+    // 📥 Inbox — only received emails
     @GetMapping("/inbox")
     public List<EmailResponse> getInbox() {
         return emailService.getMyInbox();
     }
 
-    // 📤 Send email
+    // 📤 Sent — only sent emails
+    @GetMapping("/sent")
+    public List<EmailResponse> getSent() {
+        return emailService.getMySent();
+    }
+
+    // ✉️ Send email
     @PostMapping("/send")
-    public ResponseEntity<?> sendEmail(@RequestBody EmailRequest req, Principal principal) {
-
-        String from = principal.getName(); // logged-in user email
-
+    public ResponseEntity<?> sendEmail(@RequestBody EmailRequest req,
+                                       Principal principal) {
+        String from = principal.getName();
         emailService.sendAndStoreEmail(
                 from,
                 req.getToEmail(),
                 req.getSubject(),
                 req.getMessage()
         );
-
         return ResponseEntity.ok("Email sent successfully");
     }
 }

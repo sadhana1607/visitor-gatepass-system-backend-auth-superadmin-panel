@@ -1,5 +1,6 @@
 package com.example.backend.employee.service;
 
+import com.example.backend.config.EmailService;
 import com.example.backend.employee.dto.request.EmpRequest;
 import com.example.backend.employee.dto.response.EmpResponse;
 import com.example.backend.employee.model.Employee;
@@ -30,31 +31,41 @@ public class EmployeeServiceImpl implements EmployeeService {
     private UserRepository userRepository;
 
     @Autowired
+    private EmailService emailservice;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // 🔥 CREATE EMPLOYEE
     @Override
     public EmpResponse createEmployee(EmpRequest request, User loggedInUser) {
 
+        // ✅ 1. Role check
         if (!loggedInUser.getRole().equals(Role.ORG_ADMIN)) {
             throw new UnauthorizedException("Only ORG_ADMIN can create employees");
         }
 
         Organization org = loggedInUser.getOrganization();
 
+        // ✅ 2. Email validation
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new BadRequestException("Email already exists");
+        }
+
+        // ✅ 3. Password validation (IMPORTANT)
+        String rawPassword = request.getPassword();
+        if (rawPassword == null || rawPassword.trim().isEmpty()) {
+            throw new BadRequestException("Password is required");
         }
 
         // 🔥 Create User
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode("123456"));
+        user.setPassword(passwordEncoder.encode(rawPassword));
         user.setStatus("ACTIVE");
         user.setOrganization(org);
 
-        // 🔥 Role fix
+        // ✅ 4. Role assignment
         if ("ORG_ADMIN".equalsIgnoreCase(request.getRole())) {
             user.setRole(Role.ORG_ADMIN);
         } else if ("SECURITY".equalsIgnoreCase(request.getRole())) {
@@ -70,13 +81,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setName(request.getName());
         employee.setEmail(request.getEmail());
         employee.setDepartment(request.getDepartment());
-        employee.setPhone(request.getPhone());              // ✅ FIX
-        employee.setDesignation(request.getDesignation());  // ✅ FIX
+        employee.setPhone(request.getPhone());
+        employee.setDesignation(request.getDesignation());
         employee.setStatus("ACTIVE");
         employee.setOrganization(org);
         employee.setUser(savedUser);
 
-        // 🔥 Shift for ALL roles
+        // ✅ 5. Shift validation
         try {
             LocalTime start = LocalTime.parse(request.getShiftStart());
             LocalTime end = LocalTime.parse(request.getShiftEnd());
@@ -94,6 +105,19 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Employee savedEmployee = employeeRepository.save(employee);
 
+        // ✅ 6. Send Email (wrapped in try-catch → avoids API failure)
+        try {
+            emailservice.sendEmployeeCredentials(
+                    savedEmployee.getEmail(),
+                    savedEmployee.getName(),
+                    rawPassword
+            );
+        } catch (Exception e) {
+            // 🔥 Don't break API if email fails
+            System.out.println("Email sending failed: " + e.getMessage());
+        }
+
+        // ✅ 7. Return response
         return mapToResponse(savedEmployee, "Employee created successfully");
     }
 
@@ -154,9 +178,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 🔥 UPDATE STATUS
     @Override
     @Transactional
-    public EmpResponse updateEmployeeStatus(Long id, String status) {
+    public EmpResponse updateEmployeeStatus(Long userId, String status) {
 
-        // 🔥 LOG FOR DEBUG (IMPORTANT)
         System.out.println("STATUS RECEIVED: " + status);
 
         if (status == null || status.isBlank()) {
@@ -166,14 +189,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         String newStatus = status.trim().toUpperCase();
 
         if (!newStatus.equals("ACTIVE") && !newStatus.equals("INACTIVE")) {
-            throw new BadRequestException("Invalid status");
+            throw new BadRequestException("Invalid status: " + newStatus);
         }
 
-        Employee emp = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + id));
+        // ✅ Find employee by USER id, not employee id
+        Employee emp = employeeRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found for user: " + userId));
 
         emp.setStatus(newStatus);
 
+        // ✅ Also update the User status
         User user = emp.getUser();
         if (user != null) {
             user.setStatus(newStatus);
