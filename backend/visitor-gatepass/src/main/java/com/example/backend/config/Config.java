@@ -29,6 +29,8 @@ public class Config {
 
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/org-req/create").permitAll()
+                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/api/email/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/users/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")
                         .requestMatchers("/api/org/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/employee/**").hasAnyRole("SUPER_ADMIN", "ORG_ADMIN")

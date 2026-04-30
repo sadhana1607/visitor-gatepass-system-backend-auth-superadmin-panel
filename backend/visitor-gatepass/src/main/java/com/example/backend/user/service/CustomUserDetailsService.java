@@ -6,6 +6,7 @@ import com.example.backend.user.repository.UserRepository;
 import com.example.backend.user.model.User;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -48,5 +49,37 @@ public class CustomUserDetailsService implements UserDetailsService {
                         ? u.getOrganization().getName()
                         : "No Organization"
         )).toList();
+    }
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // ✅ GET CURRENT USER FROM DB
+    public UserResponse getCurrentUser(Authentication authentication) {
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        return mapToResponse(user);
+    }
+
+    // ✅ MAPPER → YOUR DTO
+    private UserResponse mapToResponse(User user) {
+
+        String orgName = null;
+
+        if (user.getOrganization() != null) {
+            orgName = user.getOrganization().getName();
+        }
+
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getStatus(),
+                orgName
+        );
     }
 }

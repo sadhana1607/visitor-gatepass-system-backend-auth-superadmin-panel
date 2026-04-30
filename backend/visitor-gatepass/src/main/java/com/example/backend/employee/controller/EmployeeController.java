@@ -4,9 +4,11 @@ import com.example.backend.employee.dto.request.EmpRequest;
 import com.example.backend.employee.dto.response.EmpResponse;
 import com.example.backend.employee.service.EmployeeService;
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.model.User;
 import com.example.backend.user.repository.UserRepository;
 
+import com.example.backend.user.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +28,8 @@ public class EmployeeController {
     @Autowired
     private UserRepository userRepository;
 
+     @Autowired
+     private CustomUserDetailsService userService;
     // 🔥 CREATE EMPLOYEE
     @PostMapping("/create")
     public ResponseEntity<EmpResponse> createEmployee(
@@ -67,7 +71,6 @@ public class EmployeeController {
     ) {
         return service.updateEmployeeStatus(id, body.get("status"));
     }
-
     // ✅ GET ALL
     @GetMapping("/all")
     public ResponseEntity<List<EmpResponse>> getAllEmployees() {

@@ -12,6 +12,7 @@ import com.example.backend.user.model.Role;
 import com.example.backend.user.model.User;
 import com.example.backend.user.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -152,35 +153,36 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     // 🔥 UPDATE STATUS
     @Override
+    @Transactional
     public EmpResponse updateEmployeeStatus(Long id, String status) {
 
-        Employee emp = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+        // 🔥 LOG FOR DEBUG (IMPORTANT)
+        System.out.println("STATUS RECEIVED: " + status);
 
-        // ✅ Validate status
-        if (!status.equalsIgnoreCase("ACTIVE") &&
-                !status.equalsIgnoreCase("INACTIVE")) {
+        if (status == null || status.isBlank()) {
+            throw new BadRequestException("Status cannot be null");
+        }
+
+        String newStatus = status.trim().toUpperCase();
+
+        if (!newStatus.equals("ACTIVE") && !newStatus.equals("INACTIVE")) {
             throw new BadRequestException("Invalid status");
         }
 
-        String newStatus = status.toUpperCase();
+        Employee emp = employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + id));
 
-        // ✅ Update employee
         emp.setStatus(newStatus);
 
-        // ✅ Update user (SAFE)
         User user = emp.getUser();
         if (user != null) {
             user.setStatus(newStatus);
             userRepository.save(user);
-        } else {
-            // Optional: log instead of throwing
-            System.out.println("⚠ Employee has no linked user: ID = " + id);
         }
 
-        Employee updated = employeeRepository.save(emp);
+        employeeRepository.save(emp);
 
-        return mapToResponse(updated, "Status updated successfully");
+        return mapToResponse(emp, "Status updated successfully");
     }
     // 🔥 GET ALL
     @Override
@@ -199,16 +201,18 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     // 🔥 COMMON RESPONSE
     private EmpResponse mapToResponse(Employee emp, String message) {
-        return new EmpResponse(
-                emp.getId(),
-                emp.getName(),
-                emp.getEmail(),
-                emp.getDepartment(),
-                emp.getUser().getRole().name(),
-                emp.getShiftStart().toString(),
-                emp.getShiftEnd().toString(),
-                message,
-                emp.getStatus()
-        );
+
+            return new EmpResponse(
+                    emp.getId(),
+                    emp.getName(),
+                    emp.getEmail(),
+                    emp.getDepartment(),
+                    emp.getUser().getRole().name(),
+                    emp.getShiftStart().toString(),
+                    emp.getShiftEnd().toString(),
+                    emp.getPhone(),
+                    message,
+                    emp.getStatus()
+            );
+        }
     }
-}

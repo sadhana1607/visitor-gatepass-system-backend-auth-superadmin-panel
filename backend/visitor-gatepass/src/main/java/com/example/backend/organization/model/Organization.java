@@ -58,6 +58,7 @@ public class Organization {
     @JoinColumn(name = "user_id")
     private User user;
 
+private String phone;
     // Constructor
     public Organization() {
         this.createdAt = LocalDateTime.now();

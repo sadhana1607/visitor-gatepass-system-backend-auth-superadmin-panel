@@ -17,5 +17,8 @@ public class EmpResponse {
     private String status;
     private String shiftStart;
     private String shiftEnd;
+    private String phone;
     private String message;
+
+
 }

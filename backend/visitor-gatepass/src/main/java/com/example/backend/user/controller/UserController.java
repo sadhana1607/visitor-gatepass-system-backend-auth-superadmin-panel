@@ -6,6 +6,7 @@ import com.example.backend.user.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.backend.user.model.User;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,5 +27,12 @@ public class UserController {
             @PathVariable Role role) {
 
         return ResponseEntity.ok(userService.getUsersByRole(role));
+    }
+
+
+    // ✅ GET LOGGED-IN USER (FROM JWT)
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
+        return ResponseEntity.ok(userService.getCurrentUser(authentication));
     }
 }

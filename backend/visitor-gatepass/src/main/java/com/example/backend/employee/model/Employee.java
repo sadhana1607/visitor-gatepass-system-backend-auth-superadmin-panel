@@ -26,7 +26,7 @@ public class Employee {
     private String name;
 
     // ✅ Department required
-    @NotBlank(message = "Department is required")
+
     private String department;
 
     // ✅ Email validation
@@ -52,7 +52,7 @@ public class Employee {
     private String phone;
 
     // ✅ Designation required
-    @NotBlank(message = "Designation is required")
+
     private String designation;
 
     @CreationTimestamp

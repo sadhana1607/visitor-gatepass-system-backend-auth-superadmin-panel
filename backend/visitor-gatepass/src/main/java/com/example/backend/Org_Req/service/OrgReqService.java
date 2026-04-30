@@ -1,5 +1,6 @@
 package com.example.backend.Org_Req.service;
 
+import com.example.backend.config.EmailService;
 import com.example.backend.employee.model.Employee;
 import com.example.backend.employee.repository.EmployeeRepository;
 import com.example.backend.exception.BadRequestException;
@@ -15,8 +16,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalTime;
+import java.util.List;
+
 @Service
 public class OrgReqService {
+
+    @Autowired
+    private EmailService emailService;
 
     @Autowired
     private OrganizationRepository orgRepo;
@@ -79,9 +87,9 @@ public class OrgReqService {
         org.setWebsite(req.getWebsite());
         org.setStatus("PENDING");
 
-        // 🔗 Link org ↔ user
+        // 🔗 both org ↔ user
         org.setUser(user);
-
+        user.setOrganization(org);
         // 🔹 Save org (user saved via cascade)
         Organization savedOrg = orgRepo.save(org);
 
@@ -89,12 +97,30 @@ public class OrgReqService {
         Employee emp = new Employee();
         emp.setName(user.getName());
         emp.setEmail(user.getEmail());
+        emp.setPhone(req.getPhone());
         emp.setStatus("INACTIVE");
+        emp.setShiftStart(LocalTime.of(9, 0, 0));
+        emp.setShiftEnd(LocalTime.of(18, 0, 0));
 
         emp.setUser(user);                 // 🔗 link user
         emp.setOrganization(savedOrg);     // 🔗 link org
 
-        employeeRepo.save(emp);
+        Employee savedEmp = employeeRepo.save(emp);
+        List<User> superAdmins = userRepo.findByRole(Role.SUPER_ADMIN);
+
+        if (superAdmins.isEmpty()) {
+            throw new RuntimeException("No Super Admin found");
+        }
+
+        for (User admin : superAdmins) {
+            emailService.sendOrgCreatedMail(
+                    admin.getEmail(),   // ✅ correct
+                    emp.getName(),
+                    emp.getEmail(),
+                    emp.getPhone()
+            );
+        }
+
 
         return new OrgResponse(
                 savedOrg.getName(),

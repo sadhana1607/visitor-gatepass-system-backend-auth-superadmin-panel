@@ -38,5 +38,9 @@ public class OrgRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String adminPassword;
 
-    private String status; // optional (can remove if not needed)
+    private String status;
+
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^[0-9]{10}$", message = "Phone must be 10 digits")
+    private String phone;
 }
