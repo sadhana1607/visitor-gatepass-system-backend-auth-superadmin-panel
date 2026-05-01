@@ -11,6 +11,7 @@ function Organization() {
     city: "",
     type: "Company",
     phone: "",
+    website: "", // ✅ FIXED
     email: "",
     adminName: "",
     adminEmail: "",
@@ -31,6 +32,7 @@ function Organization() {
       !org.address ||
       !org.city ||
       !org.phone ||
+      !org.website ||
       !org.email ||
       !org.adminName ||
       !org.adminEmail ||
@@ -69,81 +71,74 @@ function Organization() {
     <div style={styles.page}>
       <div style={styles.card} className="cv-card">
 
-        {/* HEADER */}
         <div className="card-head">
           <span className="card-head-title">🏢 Create Organization</span>
         </div>
 
         <div className="card-body">
 
-          {errorMsg && (
-            <div style={styles.error}>
-              {errorMsg}
-            </div>
-          )}
+          {errorMsg && <div style={styles.error}>{errorMsg}</div>}
 
-          <input name="name" placeholder="Organization Name"
-            value={org.name} onChange={handleChange} style={styles.input} />
+          {/* NAME */}
+          <label >Organization Name</label>
+          <input name="name" value={org.name} onChange={handleChange} style={styles.input} />
 
-          <input name="address" placeholder="Address"
-            value={org.address} onChange={handleChange} style={styles.input} />
+          {/* ADDRESS */}
+          <label >Address</label>
+          <input name="address" value={org.address} onChange={handleChange} style={styles.input} />
 
-          <input name="city" placeholder="City"
-            value={org.city} onChange={handleChange} style={styles.input} />
+          {/* CITY */}
+          <label >City</label>
+          <input name="city" value={org.city} onChange={handleChange} style={styles.input} />
 
-          <select name="type"
-            value={org.type}
-            onChange={handleChange}
-            style={styles.input}>
+          {/* TYPE */}
+          <label >Organization Type</label>
+          <select name="type" value={org.type} onChange={handleChange} style={styles.input}>
             <option value="Company">Company</option>
             <option value="Apartment">Apartment</option>
           </select>
 
-          {/* ✅ PHONE COLUMN (IMPORTANT FIX) */}
+          {/* WEBSITE */}
+          <label >Website</label>
+          <input
+            name="website"
+            placeholder="https://example.com"
+            value={org.website}
+            onChange={handleChange}
+            style={styles.input}
+          />
+
+          {/* PHONE */}
+          <label >Phone</label>
           <input
             name="phone"
-            placeholder="Phone (10 digits)"
+            placeholder="10 digit phone number"
             value={org.phone}
             onChange={handleChange}
             style={styles.input}
           />
 
-          <input type="email" name="email"
-            placeholder="Organization Email"
-            value={org.email}
-            onChange={handleChange}
-            style={styles.input} />
+          {/* EMAIL */}
+          <label >Organization Email</label>
+          <input type="email" name="email" value={org.email} onChange={handleChange} style={styles.input} />
 
-          <input name="adminName"
-            placeholder="Admin Name"
-            value={org.adminName}
-            onChange={handleChange}
-            style={styles.input} />
+          {/* ADMIN NAME */}
+          <label >Admin Name</label>
+          <input name="adminName" value={org.adminName} onChange={handleChange} style={styles.input} />
 
-          <input type="email" name="adminEmail"
-            placeholder="Admin Email"
-            value={org.adminEmail}
-            onChange={handleChange}
-            style={styles.input} />
+          {/* ADMIN EMAIL */}
+          <label>Admin Email</label>
+          <input type="email" name="adminEmail" value={org.adminEmail} onChange={handleChange} style={styles.input} />
 
-          <input type="password" name="adminPassword"
-            placeholder="Admin Password"
-            value={org.adminPassword}
-            onChange={handleChange}
-            style={styles.input} />
+          {/* PASSWORD */}
+          <label >Admin Password</label>
+          <input type="password" name="adminPassword" value={org.adminPassword} onChange={handleChange} style={styles.input} />
 
-          <button
-            onClick={handleSubmit}
-            style={styles.button}
-            disabled={loading}
-          >
+          <button onClick={handleSubmit} style={styles.button} disabled={loading}>
             {loading ? "Creating..." : "Create Organization"}
           </button>
 
-          <button
-            onClick={() => navigate("/")}
-            style={styles.backButton}
-          >
+          <button onClick={() => navigate("/")} style={styles.backButton}>
             Back to Login
           </button>
 
@@ -153,7 +148,6 @@ function Organization() {
   );
 }
 
-/* ===== THEMED STYLES (MATCH EMAIL CENTER FEEL) ===== */
 const styles = {
   page: {
     minHeight: "100vh",
@@ -169,10 +163,18 @@ const styles = {
     overflow: "hidden"
   },
 
+  label: {
+    display: "block",
+    marginBottom: 5,
+    fontSize: 13,
+    color: "#cbd5e1",
+    fontWeight: 500
+  },
+
   input: {
     width: "100%",
     padding: 10,
-    marginBottom: 10,
+    marginBottom: 12,
     borderRadius: 8,
     border: "1px solid var(--border, #2b3440)",
     background: "rgba(255,255,255,0.03)",

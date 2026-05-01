@@ -1,124 +1,163 @@
-// pages/PageOrgInfo.jsx — View & Edit Organization Information
-import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useEffect, useState } from "react";
+import { getCurrentUser } from "../../api/userApi";
 
-export default function PageOrgInfo({ addToast }) {
-  const { user } = useAuth();
-  const org = user?.org;
+export default function Settings({ addToast }) {
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    status: "",
+    organizationName: "",
+  });
+
+  // ✅ LOAD FROM DB (FIXED SAFE RESPONSE HANDLING)
+  useEffect(() => {
+    getCurrentUser()
+      .then((res) => {
+        // 🔥 safely extract user object from different API formats
+        const data =
+          res.data?.data ||
+          res.data?.user ||
+          res.data?.content ||
+          res.data ||
+          {};
+
+        setProfile({
+          name: data.name || data.fullName || "",
+          email: data.email || "",
+          status: data.status || data.role || "",
+          organizationName: data.organizationName || data.orgName || "",
+        });
+      })
+      .catch((err) => {
+        console.log("Error loading profile", err);
+      });
+  }, []);
 
   return (
     <div className="page">
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, maxWidth: 700 }}>
 
-        {/* ── Left: Org Details ── */}
-        <div>
-          {/* Org Card */}
-          <div className="cv-card" style={{marginBottom:16}}>
-            <div className="card-head">
-              <div className="c-icon" style={{background:org?.color+"15",color:org?.color,fontSize:17}}>{org?.icon}</div>
-              <span className="card-head-title">Organization Details</span>
-              <span style={{marginLeft:"auto",fontSize:11,color:"var(--text-tertiary)",padding:"3px 10px",borderRadius:"var(--radius-full)",background:"var(--surface-2)",border:"1px solid var(--border-default)",fontWeight:600}}>
-                Read Only
-              </span>
+        {/* ── CARD ── */}
+        <div className="cv-card">
+
+          {/* HEADER */}
+          <div className="card-head">
+            <div
+              className="c-icon"
+              style={{
+                background: "rgba(139,92,246,.15)",
+                color: "#a78bfa",
+              }}
+            >
+              <i className="bi bi-person-circle" />
             </div>
-            <div className="card-body">
-              {/* Org Banner */}
-              <div style={{background:`linear-gradient(135deg,${org?.color}18,${org?.color}08)`,border:`1px solid ${org?.color}22`,borderRadius:"var(--radius-md)",padding:"18px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:16}}>
-                <div style={{width:56,height:56,borderRadius:"var(--radius-md)",background:org?.color+"18",border:`1px solid ${org?.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0}}>
-                  {org?.icon}
-                </div>
-                <div>
-                  <div style={{fontSize:18,fontWeight:800,color:"var(--text-primary)",letterSpacing:"-.3px"}}>{org?.name}</div>
-                  <div style={{fontSize:12.5,color:"var(--text-secondary)",marginTop:2}}>{org?.type==="apartment"?"Residential Apartment":"Corporate Company"} · {org?.city}</div>
-                  <span className="cv-badge b-active" style={{marginTop:6,display:"inline-flex"}}>● Active</span>
-                </div>
+
+            <span className="card-head-title">Org Admin Profile</span>
+          </div>
+
+          <div className="card-body">
+
+            {/* AVATAR + NAME */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg,#8b5cf6,#0d6efd)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  fontWeight: 900,
+                  color: "#fff",
+                  flexShrink: 0,
+                }}
+              >
+                {profile.name ? profile.name.charAt(0).toUpperCase() : "GA"}
               </div>
 
-              {/* Always read-only */}
               <div>
-                  {[
-                    {l:"Organization Name", v:org?.name,    ico:"bi-building",           c:"#6366f1"},
-                    {l:"Type",              v:org?.type==="apartment"?"Residential Apartment":"Corporate Company",ico:"bi-building-check",c:"#0ea5e9"},
-                    {l:"City",              v:org?.city,    ico:"bi-geo-alt-fill",        c:"#10b981"},
-                    {l:"Security Email",    v:org?.email,   ico:"bi-envelope-fill",       c:"#6366f1"},
-                    {l:"Website",           v:org?.website, ico:"bi-globe2",              c:"#0ea5e9"},
-                    {l:"Full Address",      v:org?.address, ico:"bi-pin-map-fill",        c:"#f59e0b"},
-                  ].map(({l,v,ico,c})=>(
-                    <div key={l} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 0",borderBottom:"1px solid var(--border-subtle)"}}>
-                      <div style={{width:32,height:32,borderRadius:"var(--radius-sm)",background:c+"12",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                        <i className={`bi ${ico}`} style={{color:c,fontSize:13}}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:10.5,fontWeight:600,color:"var(--text-tertiary)",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>{l}</div>
-                        <div style={{fontSize:13.5,color:"var(--text-primary)",fontWeight:600}}>{v||"—"}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text)" }}>
+                  {profile.name || "Loading..."}
                 </div>
-            </div>
-          </div>
-        </div>
 
-        {/* ── Right: Stats + Admin Info ── */}
-        <div>
-          {/* Quick stats */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-            {[
-              {label:"Total Employees", value:org?.employees||0,        color:"#6366f1",icon:"bi-people-fill"      },
-              {label:"Registered On",   value:org?.registeredOn||"—",   color:"#10b981",icon:"bi-calendar-check-fill"},
-            ].map(s=>(
-              <div key={s.label} className="stat-card" style={{padding:"16px 18px"}}>
-                <div className="stat-glow" style={{background:s.color}}/>
-                <div className="stat-label">{s.label}</div>
-                <div className="stat-value" style={{color:s.color,fontSize:typeof s.value==="number"?28:18}}>{s.value}</div>
-                <i className={`bi ${s.icon} stat-icon`}/>
+                <span className="role-pill rp-global">
+                  Organization Admin
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* Admin Profile */}
-          <div className="cv-card" style={{marginBottom:16}}>
-            <div className="card-head">
-              <div className="c-icon" style={{background:"rgba(99,102,241,.1)",color:"#6366f1"}}><i className="bi bi-person-circle"/></div>
-              <span className="card-head-title">Admin Profile</span>
             </div>
-            <div className="card-body">
-              <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:"var(--surface-2)",borderRadius:"var(--radius-md)",border:"1px solid var(--border-default)",marginBottom:16}}>
-                <div style={{width:52,height:52,borderRadius:"50%",background:"var(--brand)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:800,color:"#fff",flexShrink:0}}>
-                  {user?.initials}
-                </div>
-                <div>
-                  <div style={{fontSize:16,fontWeight:700,color:"var(--text-primary)"}}>{user?.name}</div>
-                  <span className="role-pill rp-orgadmin" style={{marginTop:4,display:"inline-block"}}>Org Admin</span>
-                </div>
-              </div>
+
+            {/* DETAILS */}
+            <div>
               {[
-                {l:"Email", v:user?.email, ico:"bi-envelope-fill", c:"#6366f1"},
-                {l:"Phone", v:user?.phone, ico:"bi-telephone-fill", c:"#10b981"},
-              ].map(({l,v,ico,c})=>(
-                <div key={l} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:"1px solid var(--border-subtle)"}}>
-                  <div style={{width:30,height:30,borderRadius:"var(--radius-sm)",background:c+"12",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <i className={`bi ${ico}`} style={{color:c,fontSize:13}}/>
+                ["Email", profile.email, "bi-envelope-fill", "#0d6efd"],
+                ["Status", profile.status, "bi-check-circle-fill", "#22c55e"],
+                ["Organization", profile.organizationName, "bi-building", "#8b5cf6"],
+              ].map(([label, value, icon, color]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "11px 0",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: ".45rem",
+                      background: color + "15",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className={`bi ${icon}`} style={{ color, fontSize: 13 }} />
                   </div>
-                  <div><div style={{fontSize:10.5,fontWeight:600,color:"var(--text-tertiary)",textTransform:"uppercase",letterSpacing:.5}}>{l}</div>
-                    <div style={{fontSize:13,color:"var(--text-primary)",fontWeight:600,marginTop:1}}>{v||"—"}</div>
+
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        color: "var(--muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.6,
+                      }}
+                    >
+                      {label}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 12.5,
+                        color: "var(--text)",
+                        fontWeight: 600,
+                        marginTop: 1,
+                      }}
+                    >
+                      {value || "-"}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* Access note */}
-          <div style={{padding:"14px 18px",background:"rgba(2,132,199,.06)",border:"1px solid rgba(2,132,199,.15)",borderRadius:"var(--radius-lg)",display:"flex",gap:12,alignItems:"flex-start"}}>
-            <i className="bi bi-shield-lock-fill" style={{color:"#0284c7",fontSize:18,flexShrink:0,marginTop:1}}/>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:"var(--text-primary)",marginBottom:3}}>Access Scope</div>
-              <div style={{fontSize:12.5,color:"var(--text-secondary)",lineHeight:1.6}}>
-                You are authorized to manage <strong>{org?.name}</strong> only. Organization creation, deletion, and cross-org access is managed exclusively by the Global Admin.
-              </div>
-            </div>
           </div>
         </div>
+
       </div>
     </div>
   );

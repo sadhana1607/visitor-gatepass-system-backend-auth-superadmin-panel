@@ -9,11 +9,24 @@ export default function Settings({ addToast }) {
     organizationName: "",
   });
 
-  // ✅ LOAD FROM DB
+  // ✅ LOAD FROM DB (FIXED SAFE RESPONSE HANDLING)
   useEffect(() => {
     getCurrentUser()
       .then((res) => {
-        setProfile(res.data);
+        // 🔥 safely extract user object from different API formats
+        const data =
+          res.data?.data ||
+          res.data?.user ||
+          res.data?.content ||
+          res.data ||
+          {};
+
+        setProfile({
+          name: data.name || data.fullName || "",
+          email: data.email || "",
+          status: data.status || data.role || "",
+          organizationName: data.organizationName || data.orgName || "",
+        });
       })
       .catch((err) => {
         console.log("Error loading profile", err);

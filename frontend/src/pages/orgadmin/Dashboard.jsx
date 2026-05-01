@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════
-// pages/Dashboard.jsx
+// pages/orgAdmin/Dashboard.jsx
 // Main shell — sidebar + topbar + sub pages
 // Modules: Dashboard, Employees, Alerts,
 //          Email, Info, Edit Org
 // ═══════════════════════════════════════════
 import { useState, useEffect } from "react";
-import { useAuth }             from "../../context/AuthContext";
+import { useAuth }             from "../../context/AuthContext"; // Fixed path
 import { useNavigate }         from "react-router-dom";
-import { useToast, ToastContainer } from "../../components/Toast";
+import { useToast, ToastContainer } from "../../components/Toast"; // Fixed path
 
 // Sub-pages (all in one file for simplicity)
 import PageHome       from "./PageHome";
@@ -59,7 +59,7 @@ export default function Dashboard() {
 
   const meta = PAGE_META[page] || { t: page, s: "" };
 
-  const handleLogout = () => { logout(); navigate("/login"); };
+  const handleLogout = () => { logout(); navigate("/"); };
 
   return (
     <>

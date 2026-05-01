@@ -1,0 +1,68 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-box {
+  width: 420px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.row-2 {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-save {
+  background: #6366f1;
+  color: white;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+}
+
+.btn-cancel {
+  background: #e5e7eb;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+}
+
+/* TABLE BUTTONS */
+.btn-edit {
+  background: rgba(99,102,241,0.1);
+  color: #6366f1;
+  border: 1px solid #6366f1;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.btn-toggle {
+  margin-left: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(220,38,38,0.1);
+  color: #dc2626;
+}

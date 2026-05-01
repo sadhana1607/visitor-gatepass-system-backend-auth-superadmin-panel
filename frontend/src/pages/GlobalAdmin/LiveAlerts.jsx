@@ -1,28 +1,14 @@
-// ════════════════════════════════════════════════
 // src/pages/GlobalAdmin/LiveAlerts.jsx
-//
-// Live security alerts from all organizations.
-// Role-aware: Global Admin sees ALL org alerts.
-// Features:
-//  - Real-time alert feed
-//  - Filter by org, severity, status
-//  - Acknowledge / Resolve / Escalate
-//  - Alert statistics
-// ════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
+import {
+  getAllAlerts,
+  acknowledgeAlert,
+  resolveAlert,
+  escalateAlert,
+} from "../../api/alertApi";
 
-const INIT_ALERTS = [
-  { id:"ALT-001", org:"Infosys Technologies", orgColor:"#0d6efd", type:"danger",  icon:"🚨", title:"Unauthorized Zone Access",       msg:"Visitor CVP-2025-0005 attempted access to restricted Server Room B2.",                    time:"14:45", status:"Open",         action:"Escalated to L3" },
-  { id:"ALT-002", org:"Wipro Campus",         orgColor:"#8b5cf6", type:"danger",  icon:"🔴", title:"Blacklist Match Detected",        msg:"System flagged a visitor during ID check against the restricted visitor database.",        time:"14:12", status:"Open",         action:"Guard Notified" },
-  { id:"ALT-003", org:"TCS — BKC Tower",      orgColor:"#00c878", type:"warning", icon:"⏱", title:"Visitor Overstay — 55+ Minutes", msg:"Visitor Anil Verma (Pass: TCS-0042) has exceeded authorized duration by 55 minutes.",      time:"13:15", status:"Open",         action:"Auto-generated" },
-  { id:"ALT-004", org:"HCL Technologies",     orgColor:"#00c8e0", type:"warning", icon:"🌙", title:"After-Hours Entry Attempt",      msg:"Visitor attempted check-in at 9:15 PM, after official hours. Host authorization required.",time:"21:15", status:"Acknowledged", action:"Host Contacted" },
-  { id:"ALT-005", org:"Raheja Residences",    orgColor:"#f59e0b", type:"info",    icon:"🔔", title:"Unknown Vehicle in Premises",    msg:"Unregistered vehicle MH-12-XX-9999 detected in the residential parking zone.",             time:"12:00", status:"Acknowledged", action:"Guard Investigating" },
-  { id:"ALT-006", org:"Infosys Technologies", orgColor:"#0d6efd", type:"info",    icon:"📋", title:"Duplicate Visitor Registration", msg:"Same visitor Rohit Kumar attempted to register twice in one day. Second pass blocked.",      time:"10:30", status:"Resolved",     action:"System Blocked" },
-  { id:"ALT-007", org:"Wipro Campus",         orgColor:"#8b5cf6", type:"danger",  icon:"🚨", title:"Tailgating Detected at Gate",    msg:"Security camera flagged possible tailgating at Main Gate. Guard dispatched immediately.",   time:"09:52", status:"Resolved",     action:"Guard Cleared" },
-];
-
-// Simulated live ticker items
+/* ─── Live ticker data ───────────────────────────────────────────── */
 const LIVE_TICKER = [
   "🟢 Infosys: Sunita Verma checked in — 10:02 AM",
   "🔴 Wipro: Blacklist check triggered — 14:12 PM",
@@ -32,130 +18,424 @@ const LIVE_TICKER = [
   "🟢 Raheja: 5 new visitor check-ins this hour",
 ];
 
-const TYPE_STYLE = {
-  danger:  { cls:"al-danger",  labelColor:"#ff6b7e",  badgeStyle:"b-alrt" },
-  warning: { cls:"al-warning", labelColor:"#ffaa00",  badgeStyle:"b-pend" },
-  info:    { cls:"al-info",    labelColor:"#93c5fd",  badgeStyle:"b-blue" },
+/* ─── Design tokens ──────────────────────────────────────────────── */
+const C = {
+  bg:        "#0b0e1a",
+  surface:   "#111827",
+  card:      "#151d2e",
+  border:    "rgba(255,255,255,0.07)",
+  borderHov: "rgba(255,255,255,0.13)",
+  text:      "#e8eaf0",
+  muted:     "#8891a8",
+  danger:    "#ff3d5a",
+  warning:   "#ffaa00",
+  info:      "#3b82f6",
+  success:   "#00c878",
+  accent:    "#0d6efd",
 };
 
+const TYPE_META = {
+  danger:  { color: C.danger,  bg: "rgba(255,61,90,.08)",  border: "rgba(255,61,90,.22)",  label: "Critical" },
+  warning: { color: C.warning, bg: "rgba(255,170,0,.07)",  border: "rgba(255,170,0,.2)",   label: "Warning"  },
+  info:    { color: C.info,    bg: "rgba(59,130,246,.07)", border: "rgba(59,130,246,.2)",  label: "Info"     },
+};
+
+const STATUS_META = {
+  OPEN:         { color: C.danger,  bg: "rgba(255,61,90,.15)"  },
+  ACKNOWLEDGED: { color: C.warning, bg: "rgba(255,170,0,.15)"  },
+  RESOLVED:     { color: C.success, bg: "rgba(0,200,120,.15)"  },
+  ESCALATED:    { color: "#c084fc", bg: "rgba(192,132,252,.15)"},
+};
+
+/* ─── Tiny style-tag injected once ──────────────────────────────── */
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap');
+
+  .la-root *, .la-root *::before, .la-root *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .la-root {
+    font-family: 'Sora', sans-serif;
+    background: ${C.bg};
+    color: ${C.text};
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Ticker ── */
+  .la-ticker {
+    display: flex; align-items: center; gap: 14px;
+    background: rgba(255,61,90,.06);
+    border: 1px solid rgba(255,61,90,.18);
+    border-radius: 10px;
+    padding: 11px 18px;
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .la-ticker-dot {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+    color: ${C.danger}; background: rgba(255,61,90,.18);
+    padding: 3px 9px; border-radius: 6px; flex-shrink: 0;
+    animation: la-pulse 1.4s ease-in-out infinite;
+  }
+  .la-ticker-msg {
+    font-size: 13px; color: ${C.text}; font-weight: 500;
+    animation: la-fadein .4s ease;
+  }
+  @keyframes la-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  @keyframes la-fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+  /* ── Stat cards ── */
+  .la-stats {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px;
+  }
+  .la-stat {
+    background: ${C.card};
+    border: 1px solid ${C.border};
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s, transform .2s;
+  }
+  .la-stat:hover { border-color: ${C.borderHov}; transform: translateY(-2px); }
+  .la-stat-glow {
+    position: absolute; top: -30px; right: -20px;
+    width: 90px; height: 90px; border-radius: 50%;
+    opacity: .12; pointer-events: none;
+  }
+  .la-stat-label { font-size: 11px; color: ${C.muted}; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .la-stat-value { font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .la-stat-sub { font-size: 11px; color: ${C.muted}; }
+
+  /* ── Grid layout ── */
+  .la-grid { display: grid; grid-template-columns: 1.65fr 1fr; gap: 18px; align-items: start; }
+
+  /* ── Filters ── */
+  .la-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .la-select {
+    background: ${C.card};
+    border: 1px solid ${C.border};
+    border-radius: 8px;
+    color: ${C.text};
+    font-family: 'Sora', sans-serif;
+    font-size: 12.5px;
+    padding: 7px 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238891a8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .la-select:hover, .la-select:focus { border-color: ${C.borderHov}; }
+  .la-select option { background: ${C.surface}; }
+
+  /* ── Alert cards ── */
+  .la-feed { display: flex; flex-direction: column; gap: 10px; }
+  .la-alert {
+    border-radius: 12px;
+    border: 1px solid;
+    padding: 14px 16px;
+    display: flex; gap: 14px; align-items: flex-start;
+    transition: transform .18s, box-shadow .18s;
+    animation: la-slidein .25s ease;
+  }
+  .la-alert:hover { transform: translateX(3px); box-shadow: 0 4px 24px rgba(0,0,0,.35); }
+  @keyframes la-slidein { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+
+  .la-alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+  .la-alert-body { flex: 1; min-width: 0; }
+  .la-alert-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+  .la-alert-org  { font-size: 11.5px; font-weight: 600; }
+  .la-alert-sep  { font-size: 10px; color: ${C.muted}; }
+  .la-alert-type-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    padding: 2px 8px; border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .la-alert-title { font-size: 13.5px; font-weight: 600; color: ${C.text}; margin-bottom: 4px; }
+  .la-alert-msg   { font-size: 12.5px; color: ${C.muted}; line-height: 1.55; margin-bottom: 6px; }
+  .la-alert-foot  { display: flex; align-items: center; gap: 10px; }
+  .la-alert-time  { font-size: 11px; color: ${C.muted}; font-family: 'IBM Plex Mono', monospace; }
+  .la-alert-action-tag {
+    font-size: 11px; color: ${C.muted};
+    border: 1px solid ${C.border};
+    border-radius: 5px; padding: 1px 8px;
+  }
+
+  /* ── Action buttons ── */
+  .la-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+  .la-status-badge {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .05em;
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase; white-space: nowrap;
+  }
+  .la-btn {
+    font-family: 'Sora', sans-serif;
+    font-size: 11.5px; font-weight: 600;
+    padding: 5px 13px; border-radius: 7px;
+    border: 1px solid; cursor: pointer;
+    transition: opacity .15s, transform .15s;
+    white-space: nowrap;
+  }
+  .la-btn:hover  { opacity: .82; }
+  .la-btn:active { transform: scale(.96); }
+  .la-btn-ack  { color: ${C.warning}; border-color: rgba(255,170,0,.35);  background: rgba(255,170,0,.08); }
+  .la-btn-esc  { color: #c084fc;      border-color: rgba(192,132,252,.3); background: rgba(192,132,252,.08); }
+  .la-btn-res  { color: ${C.success}; border-color: rgba(0,200,120,.35);  background: rgba(0,200,120,.08); }
+
+  /* ── Empty state ── */
+  .la-empty { text-align: center; padding: 48px 24px; color: ${C.muted}; font-size: 13px; }
+  .la-empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .4; }
+
+  /* ── Right panel ── */
+  .la-panel {
+    background: ${C.card};
+    border: 1px solid ${C.border};
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .la-panel-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid ${C.border};
+    font-size: 13px; font-weight: 600; color: ${C.text};
+    display: flex; align-items: center; gap: 8px;
+  }
+  .la-panel-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+  .la-org-row { display: flex; flex-direction: column; gap: 6px; }
+  .la-org-label { display: flex; align-items: center; justify-content: space-between; }
+  .la-org-name  { font-size: 12.5px; font-weight: 500; color: ${C.text}; }
+  .la-org-count { font-size: 11px; color: ${C.muted}; font-family: 'IBM Plex Mono', monospace; }
+  .la-org-bar-track {
+    height: 4px; background: rgba(255,255,255,.06);
+    border-radius: 4px; overflow: hidden;
+  }
+  .la-org-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width .4s ease;
+  }
+
+  .la-divider { height: 1px; background: ${C.border}; margin: 4px 0; }
+
+  .la-type-row { display: flex; align-items: center; justify-content: space-between; }
+  .la-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .la-type-label { font-size: 12px; color: ${C.muted}; flex: 1; margin-left: 8px; }
+  .la-type-count { font-size: 13px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── Section label ── */
+  .la-section-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: ${C.muted};
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 900px) {
+    .la-grid  { grid-template-columns: 1fr; }
+    .la-stats { grid-template-columns: repeat(2,1fr); }
+  }
+  @media (max-width: 540px) {
+    .la-stats { grid-template-columns: 1fr 1fr; }
+    .la-root  { padding: 14px; }
+  }
+`;
+
+/* ─── Inject CSS once ────────────────────────────────────────────── */
+function useGlobalStyle(css) {
+  useEffect(() => {
+    const id = "la-global-style";
+    if (document.getElementById(id)) return;
+    const el = document.createElement("style");
+    el.id = id;
+    el.textContent = css;
+    document.head.appendChild(el);
+    return () => el.remove();
+  }, []);
+}
+
+/* ─── Component ──────────────────────────────────────────────────── */
 export default function LiveAlerts({ addToast }) {
-  const [alerts,      setAlerts]     = useState(INIT_ALERTS);
-  const [orgFilter,   setOrgFilter]  = useState("all");
-  const [typeFilter,  setTypeFilter] = useState("all");
-  const [statusFilter,setStatusFilter]=useState("all");
-  const [ticker,      setTicker]     = useState(0);
+  useGlobalStyle(GLOBAL_CSS);
 
-  // Cycle through ticker every 3 seconds
-  useEffect(()=>{
-    const t = setInterval(()=>setTicker(n=>(n+1)%LIVE_TICKER.length),3000);
-    return ()=>clearInterval(t);
-  },[]);
+  const [alerts, setAlerts]           = useState([]);
+  const [orgFilter, setOrgFilter]     = useState("all");
+  const [typeFilter, setTypeFilter]   = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [ticker, setTicker]           = useState(0);
+  const [loading, setLoading]         = useState(false);
 
-  const orgs = [...new Set(alerts.map(a=>a.org))];
+  /* ── Fetch ── */
+  const fetchAlerts = async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (orgFilter   !== "all") params.org    = orgFilter;
+      if (typeFilter  !== "all") params.type   = typeFilter;
+      if (statusFilter !== "all") params.status = statusFilter;
 
-  const filtered = alerts.filter(a=>{
-    if(orgFilter!=="all"    && a.org!==orgFilter)     return false;
-    if(typeFilter!=="all"   && a.type!==typeFilter)   return false;
-    if(statusFilter!=="all" && a.status!==statusFilter) return false;
-    return true;
-  });
+      const res  = await getAllAlerts(params);
+      const data = res.data?.data || res.data?.content || res.data?.alerts || res.data;
+      setAlerts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setAlerts([]);
+      addToast?.("Failed to load alerts", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const doAck     = (id) => { setAlerts(p=>p.map(a=>a.id===id?{...a,status:"Acknowledged"}:a)); addToast("Alert acknowledged","info"); };
-  const doResolve = (id) => { setAlerts(p=>p.map(a=>a.id===id?{...a,status:"Resolved"}:a));     addToast("✅ Alert resolved & logged","success"); };
-  const doEsc     = (id) => { setAlerts(p=>p.map(a=>a.id===id?{...a,status:"Escalated",action:"Escalated to Authority"}:a)); addToast("🔺 Escalated to org admin","warning"); };
+  useEffect(() => { fetchAlerts(); }, [orgFilter, typeFilter, statusFilter]);
 
-  const openCount  = alerts.filter(a=>a.status==="Open").length;
-  const critCount  = alerts.filter(a=>a.type==="danger").length;
-  const resolvedCount = alerts.filter(a=>a.status==="Resolved").length;
+  /* ── Ticker ── */
+  useEffect(() => {
+    const t = setInterval(() => setTicker(n => (n + 1) % LIVE_TICKER.length), 3200);
+    return () => clearInterval(t);
+  }, []);
 
+  /* ── Derived data ── */
+  const orgs         = [...new Set(alerts.map(a => a.org))];
+  const maxOrgCount  = Math.max(...orgs.map(o => alerts.filter(a => a.org === o).length), 1);
+  const openCount    = alerts.filter(a => a.status === "OPEN").length;
+  const ackCount     = alerts.filter(a => a.status === "ACKNOWLEDGED").length;
+  const resolvedCount= alerts.filter(a => a.status === "RESOLVED").length;
+  const critCount    = alerts.filter(a => a.type?.toLowerCase() === "danger").length;
+
+  /* ── Actions ── */
+  const doAck = async (id) => {
+    try { await acknowledgeAlert(id); addToast?.("Alert acknowledged", "info"); fetchAlerts(); }
+    catch { addToast?.("Action failed", "error"); }
+  };
+  const doResolve = async (id) => {
+    try { await resolveAlert(id); addToast?.("Alert resolved & logged", "success"); fetchAlerts(); }
+    catch { addToast?.("Action failed", "error"); }
+  };
+  const doEsc = async (id) => {
+    try { await escalateAlert(id); addToast?.("Escalated to org admin", "warning"); fetchAlerts(); }
+    catch { addToast?.("Action failed", "error"); }
+  };
+
+  /* ── Render ── */
   return (
-    <div className="page">
+    <div className="la-root">
 
-      {/* ── Live Ticker Banner ── */}
-      <div style={{background:"rgba(255,61,90,.07)",border:"1px solid rgba(255,61,90,.2)",borderRadius:".65rem",padding:"10px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}}>
-        <span style={{fontSize:9.5,fontWeight:900,color:"#ff6b7e",textTransform:"uppercase",letterSpacing:1,background:"rgba(255,61,90,.2)",padding:"3px 8px",borderRadius:6,flexShrink:0,animation:"pulse-dot 1.5s infinite"}}>
-          ● LIVE
-        </span>
-        <span style={{fontSize:12.5,color:"var(--text)",fontWeight:600,transition:"opacity .3s"}}>
-          {LIVE_TICKER[ticker]}
-        </span>
+      {/* Ticker */}
+      <div className="la-ticker">
+        <span className="la-ticker-dot">● LIVE</span>
+        <span key={ticker} className="la-ticker-msg">{LIVE_TICKER[ticker]}</span>
       </div>
 
-      {/* ── Stat strip ── */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+      {/* Stat strip */}
+      <div className="la-stats">
         {[
-          { label:"Total Alerts Today", value:alerts.length,    color:"#0d6efd", icon:"bi-bell-fill"          },
-          { label:"Open / Critical",    value:openCount,        color:"#ff3d5a", icon:"bi-exclamation-octagon-fill" },
-          { label:"Acknowledged",       value:alerts.filter(a=>a.status==="Acknowledged").length, color:"#ffaa00", icon:"bi-eye-fill" },
-          { label:"Resolved Today",     value:resolvedCount,    color:"#00c878", icon:"bi-check-circle-fill"   },
-        ].map(s=>(
-          <div key={s.label} className="stat-card">
-            <div className="stat-glow" style={{background:s.color}}/>
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{color:s.color,fontSize:26}}>{s.value}</div>
-            <i className={`bi ${s.icon} stat-icon`}/>
+          { label: "Total alerts today", value: alerts.length,  color: C.accent,  sub: "all statuses" },
+          { label: "Open / critical",    value: openCount,       color: C.danger,  sub: `${critCount} critical` },
+          { label: "Acknowledged",       value: ackCount,        color: C.warning, sub: "awaiting action" },
+          { label: "Resolved today",     value: resolvedCount,   color: C.success, sub: "closed out" },
+        ].map(s => (
+          <div key={s.label} className="la-stat">
+            <div className="la-stat-glow" style={{ background: s.color }} />
+            <div className="la-stat-label">{s.label}</div>
+            <div className="la-stat-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="la-stat-sub">{s.sub}</div>
           </div>
         ))}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1.6fr 1fr",gap:16}}>
+      <div className="la-grid">
 
-        {/* ── Alert Feed ── */}
+        {/* ── Left: Alert feed ── */}
         <div>
           {/* Filters */}
-          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-            <select className="f-control" style={{width:"auto",padding:"5px 12px",fontSize:12}} value={orgFilter} onChange={e=>setOrgFilter(e.target.value)}>
-              <option value="all">All Organizations</option>
-              {orgs.map(o=><option key={o} value={o}>{o}</option>)}
-            </select>
-            <select className="f-control" style={{width:"auto",padding:"5px 12px",fontSize:12}} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="danger">🔴 Critical</option>
-              <option value="warning">🟡 Warning</option>
-              <option value="info">🔵 Info</option>
-            </select>
-            <select className="f-control" style={{width:"auto",padding:"5px 12px",fontSize:12}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="Open">Open</option>
-              <option value="Acknowledged">Acknowledged</option>
-              <option value="Resolved">Resolved</option>
+          <div className="la-filters">
+            <select className="la-select" value={orgFilter} onChange={e => setOrgFilter(e.target.value)}>
+              <option value="all">All organizations</option>
+              {orgs.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
 
+            <select className="la-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+              <option value="all">All types</option>
+              <option value="DANGER">Critical</option>
+              <option value="WARNING">Warning</option>
+              <option value="INFO">Info</option>
+            </select>
+
+            <select className="la-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="all">All statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="ACKNOWLEDGED">Acknowledged</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="ESCALATED">Escalated</option>
+            </select>
           </div>
 
-          {/* Alert cards */}
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {filtered.length===0 ? (
-              <div style={{textAlign:"center",padding:40,color:"var(--muted)",fontSize:13}}>No alerts matching filters</div>
-            ) : filtered.map(a=>{
-              const ts = TYPE_STYLE[a.type]||TYPE_STYLE.info;
+          {/* Feed */}
+          <div className="la-feed">
+            {loading ? (
+              <div className="la-empty">
+                <div className="la-empty-icon">⏳</div>
+                Loading alerts…
+              </div>
+            ) : alerts.length === 0 ? (
+              <div className="la-empty">
+                <div className="la-empty-icon">🔕</div>
+                No alerts match your filters
+              </div>
+            ) : alerts.map(a => {
+              const type   = a.type?.toLowerCase() || "info";
+              const tm     = TYPE_META[type]   || TYPE_META.info;
+              const sm     = STATUS_META[a.status] || STATUS_META.OPEN;
+
               return (
-                <div key={a.id} className={`cv-alert ${ts.cls}`} style={{display:"flex",gap:12,padding:"14px 16px",borderRadius:".75rem",border:"1px solid"}}>
-                  <div style={{fontSize:22,flexShrink:0}}>{a.icon}</div>
-                  <div style={{flex:1}}>
-                    {/* Org + severity */}
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                      <div style={{width:8,height:8,borderRadius:"50%",background:a.orgColor,flexShrink:0}}/>
-                      <span style={{fontSize:10,fontWeight:800,color:a.orgColor}}>{a.org}</span>
-                      <span style={{fontSize:10,color:"var(--muted)"}}>·</span>
-                      <span style={{fontSize:10,fontWeight:800,color:ts.labelColor,textTransform:"uppercase"}}>{a.type}</span>
+                <div
+                  key={a.id}
+                  className="la-alert"
+                  style={{ background: tm.bg, borderColor: tm.border }}
+                >
+                  <div className="la-alert-icon">{a.icon}</div>
+
+                  <div className="la-alert-body">
+                    <div className="la-alert-meta">
+                      <span className="la-alert-org" style={{ color: a.orgColor || tm.color }}>
+                        {a.org}
+                      </span>
+                      <span className="la-alert-sep">·</span>
+                      <span
+                        className="la-alert-type-badge"
+                        style={{ color: tm.color, background: `${tm.color}1a`, border: `1px solid ${tm.color}33` }}
+                      >
+                        {tm.label}
+                      </span>
                     </div>
-                    <div style={{fontSize:13,fontWeight:800,color:"var(--text)",marginBottom:4}}>{a.title}</div>
-                    <div style={{fontSize:11.5,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}>{a.msg}</div>
-                    <div style={{fontSize:10.5,color:"var(--muted)"}}>{a.time} today · {a.action}</div>
+                    <div className="la-alert-title">{a.title}</div>
+                    <div className="la-alert-msg">{a.msg}</div>
+                    <div className="la-alert-foot">
+                      <span className="la-alert-time">{a.time}</span>
+                      {a.action && <span className="la-alert-action-tag">{a.action}</span>}
+                      <span style={{ fontSize: 10.5, color: C.muted, fontFamily: "'IBM Plex Mono',monospace" }}>
+                        {a.id}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:5,alignItems:"flex-end",flexShrink:0}}>
-                    <span className={`cv-badge ${a.status==="Open"?"b-alrt":a.status==="Acknowledged"?"b-pend":a.status==="Escalated"?"b-alrt":"b-inactive"}`}>
+
+                  <div className="la-actions">
+                    <span
+                      className="la-status-badge"
+                      style={{ color: sm.color, background: sm.bg }}
+                    >
                       {a.status}
                     </span>
-                    {a.status==="Open" && (
+
+                    {a.status === "OPEN" && (
                       <>
-                        <button className="cv-btn btn-ghost sm" style={{fontSize:10.5}} onClick={()=>doAck(a.id)}><i className="bi bi-eye"/>Ack</button>
-                        <button className="cv-btn btn-ghost sm" style={{fontSize:10.5,color:"#ffaa00"}} onClick={()=>doEsc(a.id)}><i className="bi bi-exclamation-triangle-fill"/>Escalate</button>
+                        <button className="la-btn la-btn-ack" onClick={() => doAck(a.id)}>Acknowledge</button>
+                        <button className="la-btn la-btn-esc" onClick={() => doEsc(a.id)}>Escalate</button>
                       </>
                     )}
-                    {a.status==="Acknowledged" && (
-                      <button className="cv-btn btn-success sm" style={{fontSize:10.5}} onClick={()=>doResolve(a.id)}><i className="bi bi-check-circle-fill"/>Resolve</button>
+                    {a.status === "ACKNOWLEDGED" && (
+                      <button className="la-btn la-btn-res" onClick={() => doResolve(a.id)}>Resolve</button>
                     )}
                   </div>
                 </div>
@@ -164,31 +444,32 @@ export default function LiveAlerts({ addToast }) {
           </div>
         </div>
 
-        {/* ── Right: Stats by org ── */}
-        <div>
-          <div className="cv-card mb16" style={{marginBottom:16}}>
-            <div className="card-head"><span className="card-head-title">📊 Alerts by Organization</span></div>
-            <div className="card-body">
-              {orgs.map(org=>{
-                const orgAlerts = alerts.filter(a=>a.org===org);
-                const open   = orgAlerts.filter(a=>a.status==="Open").length;
-                const danger = orgAlerts.filter(a=>a.type==="danger").length;
-                const color  = alerts.find(a=>a.org===org)?.orgColor||"#888";
+        {/* ── Right: Analytics panel ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* By org */}
+          <div className="la-panel">
+            <div className="la-panel-head">
+              <span>📊</span> Alerts by organization
+            </div>
+            <div className="la-panel-body">
+              {orgs.length === 0 ? (
+                <span style={{ fontSize: 12, color: C.muted }}>No data</span>
+              ) : orgs.map(org => {
+                const orgAlerts = alerts.filter(a => a.org === org);
+                const orgColor  = orgAlerts[0]?.orgColor || C.accent;
+                const pct       = Math.round((orgAlerts.length / maxOrgCount) * 100);
                 return (
-                  <div key={org} style={{marginBottom:14}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:color}}/>
-                        <span style={{fontSize:12,color:"var(--text)",fontWeight:700}}>{org}</span>
-                      </div>
-                      <div style={{display:"flex",gap:5}}>
-                        {open>0&&<span className="cv-badge b-alrt" style={{fontSize:9}}>{open} Open</span>}
-                        {danger>0&&<span style={{fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:8,background:"rgba(255,61,90,.15)",color:"#ff6b7e"}}>{danger} Critical</span>}
-                      </div>
+                  <div key={org} className="la-org-row">
+                    <div className="la-org-label">
+                      <span className="la-org-name" style={{ color: orgColor }}>{org}</span>
+                      <span className="la-org-count">{orgAlerts.length}</span>
                     </div>
-                    <div style={{fontSize:10.5,color:"var(--muted)",marginBottom:4}}>{orgAlerts.length} total alerts</div>
-                    <div style={{height:4,background:"rgba(255,255,255,.07)",borderRadius:3}}>
-                      <div style={{width:`${Math.min((orgAlerts.length/alerts.length)*100*2,100)}%`,height:"100%",background:color,borderRadius:3}}/>
+                    <div className="la-org-bar-track">
+                      <div
+                        className="la-org-bar-fill"
+                        style={{ width: `${pct}%`, background: orgColor }}
+                      />
                     </div>
                   </div>
                 );
@@ -196,26 +477,50 @@ export default function LiveAlerts({ addToast }) {
             </div>
           </div>
 
-          <div className="cv-card">
-            <div className="card-head"><span className="card-head-title">⚡ Alert Type Summary</span></div>
-            <div className="card-body">
+          {/* By type */}
+          <div className="la-panel">
+            <div className="la-panel-head">
+              <span>🔍</span> Breakdown by type
+            </div>
+            <div className="la-panel-body">
               {[
-                { label:"🔴 Critical Alerts", count:critCount,                               color:"#ff3d5a" },
-                { label:"🟡 Warnings",         count:alerts.filter(a=>a.type==="warning").length, color:"#ffaa00" },
-                { label:"🔵 Info Alerts",       count:alerts.filter(a=>a.type==="info").length,   color:"#93c5fd" },
-                { label:"✅ Resolved",           count:resolvedCount,                          color:"#00c878" },
-              ].map(r=>(
-                <div key={r.label} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid var(--border)"}}>
-                  <span style={{fontSize:12.5,color:"var(--muted)"}}>{r.label}</span>
-                  <span style={{fontFamily:"'Fira Code',monospace",fontWeight:700,color:r.color,fontSize:15}}>{r.count}</span>
-                </div>
-              ))}
-              <div style={{marginTop:14,padding:12,background:"rgba(255,61,90,.06)",border:"1px solid rgba(255,61,90,.15)",borderRadius:".6rem",fontSize:11,color:"#fca5a5"}}>
-                <i className="bi bi-info-circle" style={{marginRight:6}}/>
-                All alerts auto-escalate per SLA if unresolved within 10 minutes.
-              </div>
+                { key: "danger",  label: "Critical" },
+                { key: "warning", label: "Warning"  },
+                { key: "info",    label: "Info"      },
+              ].map(({ key, label }) => {
+                const count = alerts.filter(a => a.type?.toLowerCase() === key).length;
+                const tm    = TYPE_META[key];
+                return (
+                  <div key={key} className="la-type-row">
+                    <div className="la-type-dot" style={{ background: tm.color }} />
+                    <span className="la-type-label">{label}</span>
+                    <span className="la-type-count" style={{ color: tm.color }}>{count}</span>
+                  </div>
+                );
+              })}
+
+              <div className="la-divider" />
+
+              {/* By status */}
+              {[
+                { key: "OPEN",         label: "Open"         },
+                { key: "ACKNOWLEDGED", label: "Acknowledged" },
+                { key: "ESCALATED",    label: "Escalated"    },
+                { key: "RESOLVED",     label: "Resolved"     },
+              ].map(({ key, label }) => {
+                const count = alerts.filter(a => a.status === key).length;
+                const sm    = STATUS_META[key];
+                return (
+                  <div key={key} className="la-type-row">
+                    <div className="la-type-dot" style={{ background: sm.color }} />
+                    <span className="la-type-label">{label}</span>
+                    <span className="la-type-count" style={{ color: sm.color }}>{count}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
+
         </div>
       </div>
     </div>

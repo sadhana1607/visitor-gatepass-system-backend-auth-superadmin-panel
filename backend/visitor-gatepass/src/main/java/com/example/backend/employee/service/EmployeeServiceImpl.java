@@ -121,6 +121,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         return mapToResponse(savedEmployee, "Employee created successfully");
     }
 
+
+
     // 🔥 UPDATE EMPLOYEE
     @Override
     public EmpResponse updateEmployee(Long id, EmpRequest request) {
@@ -226,18 +228,17 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     // 🔥 COMMON RESPONSE
     private EmpResponse mapToResponse(Employee emp, String message) {
-
-            return new EmpResponse(
-                    emp.getId(),
-                    emp.getName(),
-                    emp.getEmail(),
-                    emp.getDepartment(),
-                    emp.getUser().getRole().name(),
-                    emp.getShiftStart().toString(),
-                    emp.getShiftEnd().toString(),
-                    emp.getPhone(),
-                    message,
-                    emp.getStatus()
-            );
-        }
+        return new EmpResponse(
+                emp.getId(),
+                emp.getName(),
+                emp.getEmail(),
+                emp.getDepartment(),
+                emp.getUser() != null ? emp.getUser().getRole().name() : "EMPLOYEE",
+                emp.getStatus(), // Make sure this order matches your EmpResponse constructor!
+                emp.getShiftStart() != null ? emp.getShiftStart().toString() : "09:00:00",
+                emp.getShiftEnd() != null ? emp.getShiftEnd().toString() : "18:00:00",
+                emp.getPhone(),
+                message
+        );
+    }
     }
